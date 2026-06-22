@@ -36,18 +36,18 @@ export default async function NewExpensePage() {
       <div className="w-full max-w-3xl space-y-6">
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
-            <CardTitle className="text-3xl">Add an expense</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-3xl font-bold">💸 Add an expense</CardTitle>
             <CardDescription>
               Quick entry for the iOS Shortcut and the main app flow.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Saved as {currentUser.name} for your couple workspace.</p>
+            <p>Saved as <span className="font-medium text-foreground">{currentUser.name}</span> for your couple workspace.</p>
             <Link
               href="/shortcut"
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
             >
-              Open iPhone shortcut setup
+              📱 Open iPhone shortcut setup
             </Link>
           </CardContent>
         </Card>

@@ -45,57 +45,62 @@ export default async function ShortcutPage() {
   const authHeader = `Bearer ${shortcutToken}`;
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-lg shadow-orange-500/5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-2">
-          <Badge variant="secondary" className="w-fit">
-            iPhone shortcut
-          </Badge>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Quick add expenses from your iPhone
-          </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Create the shortcut once, paste in your personal token, and send expenses to FireTogether in seconds.
-          </p>
-        </div>
+    <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/5 p-8 shadow-lg shadow-orange-500/5">
+        <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <Badge variant="secondary" className="gap-1.5 border-primary/20 bg-primary/10 text-primary">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+              iPhone shortcut
+            </Badge>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Quick add expenses from your <span className="text-primary">iPhone</span>
+            </h1>
+            <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
+              Create the shortcut once, paste in your personal token, and send expenses to FireTogether in seconds.
+            </p>
+          </div>
 
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/expenses/new"
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Open expense form
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-          >
-            Back to dashboard
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/expenses/new"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
+            >
+              + Add expense
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              ← Dashboard
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
-            <CardTitle>Shortcut steps</CardTitle>
+            <CardTitle className="flex items-center gap-2">📱 Shortcut steps</CardTitle>
             <CardDescription>Build a simple POST request in the Shortcuts app.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <div className="rounded-2xl border border-border bg-muted/20 p-4 text-foreground">
-              <p className="font-medium">1. Create a new shortcut in Apple Shortcuts.</p>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-muted/10 p-4 text-foreground transition-colors hover:border-primary/20">
+              <p className="font-semibold">1. Create a new shortcut in Apple Shortcuts.</p>
               <p className="mt-1 text-muted-foreground">Add prompts for amount, description, date, split type, and optional category.</p>
             </div>
-            <div className="rounded-2xl border border-border bg-muted/20 p-4 text-foreground">
-              <p className="font-medium">2. Add a “Get Contents of URL” action.</p>
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-muted/10 p-4 text-foreground transition-colors hover:border-primary/20">
+              <p className="font-semibold">2. Add a "Get Contents of URL" action.</p>
               <p className="mt-1 text-muted-foreground">Use a POST request to the endpoint on the right.</p>
             </div>
-            <div className="rounded-2xl border border-border bg-muted/20 p-4 text-foreground">
-              <p className="font-medium">3. Set the header to your token.</p>
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-muted/10 p-4 text-foreground transition-colors hover:border-primary/20">
+              <p className="font-semibold">3. Set the header to your token.</p>
               <p className="mt-1 text-muted-foreground">Use Authorization: Bearer and paste your personal shortcut token.</p>
             </div>
-            <div className="rounded-2xl border border-border bg-muted/20 p-4 text-foreground">
-              <p className="font-medium">4. Send JSON with the expense fields.</p>
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-muted/40 to-muted/10 p-4 text-foreground transition-colors hover:border-primary/20">
+              <p className="font-semibold">4. Send JSON with the expense fields.</p>
               <p className="mt-1 text-muted-foreground">The API accepts amount, date, split type, description, category, and custom ratio.</p>
             </div>
           </CardContent>
@@ -103,7 +108,7 @@ export default async function ShortcutPage() {
 
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
-            <CardTitle>Your setup values</CardTitle>
+            <CardTitle className="flex items-center gap-2">🔑 Your setup values</CardTitle>
             <CardDescription>Copy these into the shortcut once and reuse it forever.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 text-sm">

@@ -20,7 +20,7 @@ async function sendMagicLink(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback?next=/onboarding`,
+      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
     },
   });
 
@@ -41,20 +41,23 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md border-border/60 shadow-lg shadow-orange-500/5">
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign in to FireTogether</CardTitle>
+      <Card className="w-full max-w-md border-border/60 shadow-xl shadow-orange-500/5">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
+            🔥
+          </div>
+          <CardTitle className="text-2xl font-bold">Sign in to FireTogether</CardTitle>
           <CardDescription>
-            We&apos;ll send a magic link to your email, then continue you into onboarding.
+            We'll send a magic link to your email, then continue you into onboarding.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={sendMagicLink} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="you@example.com" required />
+              <Input id="email" name="email" type="email" placeholder="you@example.com" required className="h-11" />
             </div>
-            <Button className="w-full" type="submit">
+            <Button className="h-11 w-full text-base font-semibold shadow-md shadow-primary/20" type="submit">
               Send magic link
             </Button>
           </form>
