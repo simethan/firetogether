@@ -2,7 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
-  // Skip auth refresh for the callback route — it handles its own session
+  // Skip auth refresh for the callback page — it handles its own
+  // session exchange client-side, and we don't want middleware to
+  // interfere before the code-for-session swap completes.
   if (request.nextUrl.pathname.startsWith("/auth/callback")) {
     return NextResponse.next({ request });
   }
