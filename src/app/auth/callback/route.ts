@@ -1,6 +1,7 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -11,35 +12,50 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login", url.origin));
   }
 
-  const supabase = await createClient();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  // We must build the Supabase client manually here so we can capture
+  // the cookies that exchangeCodeForSession wants to set and attach
+  // them to our redirect response. Using the shared createClient()
+  // from server.ts sets cookies on the cookies() store, but those
+  // cookies are lost when we construct a new NextResponse for the
+  // redirect — which is why auth worked locally (same process) but
+  // broke on Vercel (serverless, separate invocations).
+  const cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        // On the first call there are no auth cookies yet
+        return [];
+      },
+      setAll(cookies) {
+        for (const c of cookies) {
+          cookiesToSet.push({ name: c.name, value: c.value, options: c.options });
+        }
+      },
+    },
+  });
+
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    // Redirect back to login with a clear error
     return NextResponse.redirect(new URL("/login?error=auth_failed", url.origin));
   }
 
-  // Build the redirect response and forward all auth cookies that were set
-  // during the code exchange. On Vercel (serverless), the cookie-setting
-  // inside `createClient` may not automatically flow into the redirect
-  // response, so we read them from the supabase client's internal cookie
-  // jar and attach them explicitly.
+  // Build the redirect and attach every auth cookie the SSR client
+  // wants to set. This is the critical step that was missing —
+  // without it the session cookies never reach the browser on Vercel.
   const redirectUrl = new URL(nextPath, url.origin);
   const response = NextResponse.redirect(redirectUrl);
 
-  // The Supabase SSR client sets cookies via the `setAll` callback in
-  // createClient(). On serverless, those cookies are set on the
-  // `cookies()` store which Next.js merges into the response. However,
-  // when we construct a *new* NextResponse for the redirect, those
-  // cookies are lost. We need to forward them manually.
-  //
-  // We re-create the client to read the cookies that were just set:
-  const refreshedClient = await createClient();
-  const { data: { session } } = await refreshedClient.auth.getSession();
-
-  if (!session) {
-    // Session wasn't established — redirect to login
-    return NextResponse.redirect(new URL("/login?error=no_session", url.origin));
+  for (const { name, value, options } of cookiesToSet) {
+    response.cookies.set(name, value, {
+      ...options,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
   }
 
   return response;
