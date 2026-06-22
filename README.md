@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FireTogether
 
-## Getting Started
+Couples finance and expense tracking with shared dashboards, budgets, savings goals, onboarding, and an iPhone shortcut for fast expense entry.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set these in local development and in Vercel:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SITE_URL` for production auth redirects
 
-To learn more about Next.js, take a look at the following resources:
+The app falls back to `VERCEL_URL` at runtime, but setting `NEXT_PUBLIC_SITE_URL` to your production domain is the cleanest option.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run the SQL files in `supabase/migrations/` in order.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push the repo to GitHub.
+2. Import the repo into Vercel.
+3. Add the environment variables above.
+4. Set the Supabase auth redirect URL to `https://your-domain.vercel.app/auth/callback`.
+5. Deploy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## iPhone shortcut setup
+
+After you sign in, open `/shortcut` in the app.
+
+That page gives you:
+
+- The API endpoint to POST to
+- A per-user authorization token
+- A sample JSON body for the expense request
+
+In Apple Shortcuts, create a shortcut that collects amount, date, description, category, and split type, then sends a POST request to the API endpoint using the copied authorization header.
