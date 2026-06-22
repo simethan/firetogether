@@ -1,42 +1,43 @@
-import { redirect } from "next/navigation";
+"use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getSiteUrl } from "@/lib/siteUrl";
-import { createClient } from "@/lib/supabase/server";
+import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
 
-async function sendMagicLink(formData: FormData) {
-  "use server";
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+  const sent = searchParams.get("sent");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(errorParam);
 
-  const email = String(formData.get("email") ?? "").trim();
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-  if (!email) {
-    redirect("/login?error=email_required");
-  }
+    const res = await fetch("/api/auth/magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-    },
-  });
+    const data = await res.json();
 
-  if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
-  }
+    if (!res.ok && data.error) {
+      setError(data.error);
+      setLoading(false);
+      return;
+    }
 
-  redirect("/login?sent=1");
-}
-
-export default async function LoginPage() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-
-  if (data.user) {
-    redirect("/onboarding");
+    router.push("/login?sent=1");
   }
 
   return (
@@ -52,17 +53,51 @@ export default async function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={sendMagicLink} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="you@example.com" required className="h-11" />
+          {sent ? (
+            <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-center text-green-700 dark:text-green-400">
+              <p className="font-semibold">Check your email!</p>
+              <p className="mt-1 text-sm">We sent a magic link to <strong>{email}</strong>. Click it to sign in.</p>
             </div>
-            <Button className="h-11 w-full text-base font-semibold shadow-md shadow-primary/20" type="submit">
-              Send magic link
-            </Button>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-600 dark:text-red-400">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  className="h-11"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <Button
+                className="h-11 w-full text-base font-semibold shadow-md shadow-primary/20"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Sending..." : "Send magic link"}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
