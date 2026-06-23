@@ -40,15 +40,33 @@ function parseSplitType(value: unknown) {
   return null;
 }
 
-function parsePayload(body: unknown): ShortcutExpensePayload | null {
+function parsePayload(body: unknown): { payload: ShortcutExpensePayload; errors: string[] } | null {
   if (!body || typeof body !== "object") {
     return null;
   }
 
   const candidate = body as Record<string, unknown>;
+  const errors: string[] = [];
+
   const amount = parseAmount(candidate.amount);
+  if (amount === null) {
+    errors.push("amount must be a positive number");
+  }
+
   const expenseDate = parseString(candidate.expense_date);
+  if (expenseDate === null) {
+    errors.push("expense_date must be a non-empty string");
+  }
+
   const splitType = parseSplitType(candidate.split_type);
+  if (splitType === null) {
+    errors.push('split_type must be "personal", "shared", or "custom"');
+  }
+
+  if (errors.length > 0) {
+    return { payload: null as unknown as ShortcutExpensePayload, errors };
+  }
+
   const description = typeof candidate.description === "string" ? candidate.description.trim() : undefined;
   const categoryId = candidate.category_id == null ? null : parseString(candidate.category_id);
   const customRatio =
@@ -58,17 +76,16 @@ function parsePayload(body: unknown): ShortcutExpensePayload | null {
         ? candidate.custom_ratio
         : null;
 
-  if (!amount || !expenseDate || !splitType) {
-    return null;
-  }
-
   return {
-    amount,
-    expense_date: expenseDate,
-    split_type: splitType,
-    category_id: categoryId,
-    description,
-    custom_ratio: customRatio,
+    payload: {
+      amount: amount!,
+      expense_date: expenseDate!,
+      split_type: splitType!,
+      category_id: categoryId,
+      description,
+      custom_ratio: customRatio,
+    },
+    errors: [],
   };
 }
 
@@ -88,11 +105,14 @@ export async function POST(request: NextRequest) {
     return badRequest("Request body must be valid JSON.");
   }
 
-  const payload = parsePayload(body);
+  const parsed = parsePayload(body);
 
-  if (!payload) {
-    return badRequest("Missing or invalid expense fields.");
+  if (!parsed || parsed.errors.length > 0) {
+    const details = parsed ? parsed.errors.join("; ") : "Request body must be a JSON object.";
+    return badRequest(`Missing or invalid expense fields: ${details}`);
   }
+
+  const payload = parsed.payload;
 
   if (payload.split_type === "custom") {
     if (typeof payload.custom_ratio !== "number" || payload.custom_ratio <= 0 || payload.custom_ratio > 1) {
