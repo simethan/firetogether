@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId, getCurrentCouple } from "@/lib/auth";
 import { calculateDashboardSummary, formatCurrency, getCurrentMonthValue, getMonthStartDate } from "@/lib/finance";
@@ -120,6 +121,7 @@ export default async function DashboardPage() {
             >
               Goals
             </Link>
+            <SignOutButton />
           </div>
         </div>
       </div>

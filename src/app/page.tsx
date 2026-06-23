@@ -20,13 +20,13 @@ export default function Home() {
             href="/login"
             className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
           >
-            Sign in
+            Get started
           </Link>
           <Link
-            href="/onboarding"
+            href="/login"
             className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Start onboarding
+            Sign in
           </Link>
         </CardContent>
       </Card>
