@@ -32,9 +32,8 @@ function CallbackHandler() {
         }
 
         // Session cookies are now set in the browser.
-        // Redirect to onboarding — the DB trigger already
-        // created the public.users row, so onboarding just
-        // needs to collect the name and couple info.
+        // Redirect to onboarding — it will create the
+        // public.users row via service role upsert if needed.
         router.replace("/onboarding");
       })
       .catch((err) => {

@@ -31,7 +31,13 @@ function LoginForm() {
 
     const data = await res.json();
 
-    if (!res.ok && data.error) {
+    if (!res.ok) {
+      setError(data.error || `Request failed (${res.status})`);
+      setLoading(false);
+      return;
+    }
+
+    if (data.error) {
       setError(data.error);
       setLoading(false);
       return;
