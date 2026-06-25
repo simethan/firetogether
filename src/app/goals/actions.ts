@@ -5,10 +5,6 @@ import { getAuthUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-type GoalError = {
-  error: string | null;
-};
-
 function parseAmount(value: FormDataEntryValue | null) {
   const parsed = typeof value === "string" ? Number(value) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : null;
@@ -53,12 +49,11 @@ async function getCurrentUserOrRedirect() {
   return { authUserId, currentUser, admin } as const;
 }
 
-export async function createGoalAction(
-  formData: FormData
-): Promise<void> {
+export async function createGoalAction(formData: FormData): Promise<void> {
   const { authUserId, currentUser, admin } = await getCurrentUserOrRedirect();
   const name = parseString(formData.get("name"));
   const targetAmount = parseAmount(formData.get("target_amount"));
+  const currentAmount = parseAmount(formData.get("current_amount")) ?? 0;
   const deadline = parseDate(formData.get("deadline"));
   const icon = parseString(formData.get("icon"));
   const isShared = formData.has("is_shared");
@@ -71,12 +66,16 @@ export async function createGoalAction(
     redirect("/goals?error=Enter%20a%20valid%20target%20amount.");
   }
 
+  if (currentAmount < 0) {
+    redirect("/goals?error=Enter%20a%20valid%20current%20amount.");
+  }
+
   const { error } = await admin.from("savings_goals").insert({
     couple_id: currentUser.couple_id,
     created_by: authUserId,
     name,
     target_amount: targetAmount,
-    current_amount: 0,
+    current_amount: currentAmount,
     deadline,
     is_shared: isShared,
     icon,
@@ -96,11 +95,19 @@ export async function updateGoalAction(formData: FormData) {
   const id = parseString(formData.get("id"));
   const name = parseString(formData.get("name"));
   const targetAmount = parseAmount(formData.get("target_amount"));
+  const currentAmount = parseAmount(formData.get("current_amount"));
   const deadline = parseDate(formData.get("deadline"));
   const icon = parseString(formData.get("icon"));
   const isShared = formData.has("is_shared");
 
-  if (!id || !name || !targetAmount || targetAmount <= 0) {
+  if (
+    !id ||
+    !name ||
+    !targetAmount ||
+    targetAmount <= 0 ||
+    currentAmount === null ||
+    currentAmount < 0
+  ) {
     redirect("/goals?error=invalid_goal_update");
   }
 
@@ -116,7 +123,14 @@ export async function updateGoalAction(formData: FormData) {
 
   const { error } = await admin
     .from("savings_goals")
-    .update({ name, target_amount: targetAmount, deadline, icon, is_shared: isShared })
+    .update({
+      name,
+      target_amount: targetAmount,
+      current_amount: currentAmount,
+      deadline,
+      icon,
+      is_shared: isShared,
+    })
     .eq("id", id);
 
   if (error) {
@@ -148,7 +162,10 @@ export async function addFundsAction(formData: FormData) {
   }
 
   const nextAmount = Number(goal.current_amount) + amount;
-  const { error } = await admin.from("savings_goals").update({ current_amount: nextAmount }).eq("id", id);
+  const { error } = await admin
+    .from("savings_goals")
+    .update({ current_amount: nextAmount })
+    .eq("id", id);
 
   if (error) {
     redirect(`/goals?error=${encodeURIComponent(error.message)}`);

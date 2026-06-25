@@ -6,10 +6,6 @@ import { getMonthStartDate } from "@/lib/finance";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-type BudgetError = {
-  error: string | null;
-};
-
 function parseAmount(value: FormDataEntryValue | null) {
   const parsed = typeof value === "string" ? Number(value) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : null;
@@ -58,9 +54,7 @@ async function getCurrentUserOrRedirect() {
   return { authUserId, currentUser, admin } as const;
 }
 
-export async function createBudgetAction(
-  formData: FormData
-): Promise<void> {
+export async function createBudgetAction(formData: FormData): Promise<void> {
   const { currentUser, admin } = await getCurrentUserOrRedirect();
   const amount = parseAmount(formData.get("amount"));
   const month = parseMonth(formData.get("month"));
@@ -82,7 +76,9 @@ export async function createBudgetAction(
       .maybeSingle();
 
     if (!category || category.couple_id !== currentUser.couple_id) {
-      redirect("/budgets?error=Choose%20a%20category%20from%20your%20couple%27s%20list.");
+      redirect(
+        "/budgets?error=Choose%20a%20category%20from%20your%20couple%27s%20list.",
+      );
     }
   }
 
@@ -94,11 +90,11 @@ export async function createBudgetAction(
         month,
         amount,
       },
-      { onConflict: "couple_id,category_id,month" }
+      { onConflict: "couple_id,category_id,month" },
     );
 
     if (error) {
-        redirect(`/budgets?error=${encodeURIComponent(error.message)}`);
+      redirect(`/budgets?error=${encodeURIComponent(error.message)}`);
     }
   } else {
     const { data: existing } = await admin
@@ -110,7 +106,10 @@ export async function createBudgetAction(
       .maybeSingle();
 
     if (existing) {
-      const { error } = await admin.from("budgets").update({ amount }).eq("id", existing.id);
+      const { error } = await admin
+        .from("budgets")
+        .update({ amount })
+        .eq("id", existing.id);
 
       if (error) {
         redirect(`/budgets?error=${encodeURIComponent(error.message)}`);

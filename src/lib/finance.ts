@@ -57,7 +57,10 @@ function getShareForExpense(expense: Expense) {
   }
 
   if (expense.split_type === "custom") {
-    const payerShare = typeof expense.custom_ratio === "number" ? expense.custom_ratio * expense.amount : expense.amount / 2;
+    const payerShare =
+      typeof expense.custom_ratio === "number"
+        ? expense.custom_ratio * expense.amount
+        : expense.amount / 2;
     return { payer: payerShare, partner: expense.amount - payerShare };
   }
 
@@ -99,7 +102,8 @@ export function calculateDashboardSummary({
       payer.paid += expense.amount;
     }
 
-    const { payer: payerShare, partner: partnerShare } = getShareForExpense(expense);
+    const { payer: payerShare, partner: partnerShare } =
+      getShareForExpense(expense);
 
     if (expense.split_type === "personal") {
       personalSpent += expense.amount;
@@ -124,17 +128,16 @@ export function calculateDashboardSummary({
     }
   }
 
-  const members = Array.from(userBalances.values()).sort((left, right) => right.net - left.net);
+  const members = Array.from(userBalances.values()).sort(
+    (left, right) => right.net - left.net,
+  );
   const balanceA = members[0] ?? null;
   const balanceB = members[1] ?? null;
-  const settleUpAmount = balanceA && balanceB ? roundCurrency(Math.abs(balanceA.net)) : 0;
+  const settleUpAmount =
+    balanceA && balanceB ? roundCurrency(Math.abs(balanceA.net)) : 0;
 
   const categoryTotals = new Map<string | null, number>();
   for (const expense of expenses) {
-    if (expense.split_type === "personal") {
-      continue;
-    }
-
     const key = expense.category_id ?? null;
     categoryTotals.set(key, (categoryTotals.get(key) ?? 0) + expense.amount);
   }
@@ -147,14 +150,18 @@ export function calculateDashboardSummary({
   const categorySummaries = Array.from(categoryTotals.entries())
     .map(([categoryId, amount]) => {
       const category = categories.find((item) => item.id === categoryId);
-      const budget = budgetMap.get(`${categoryId ?? "overall"}:${new Date().toISOString().slice(0, 7)}-01`);
+      const budget = budgetMap.get(
+        `${categoryId ?? "overall"}:${new Date().toISOString().slice(0, 7)}-01`,
+      );
 
       return {
         categoryId,
         name: category?.name ?? "Uncategorized",
         amount: roundCurrency(amount),
         budget: budget ? Number(budget.amount) : null,
-        remaining: budget ? roundCurrency(Number(budget.amount) - amount) : null,
+        remaining: budget
+          ? roundCurrency(Number(budget.amount) - amount)
+          : null,
       };
     })
     .sort((left, right) => right.amount - left.amount);
@@ -175,5 +182,8 @@ export function getGoalProgress(goal: SavingsGoal) {
     return 0;
   }
 
-  return Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100));
+  return Math.min(
+    100,
+    Math.round((goal.current_amount / goal.target_amount) * 100),
+  );
 }

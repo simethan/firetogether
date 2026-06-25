@@ -66,6 +66,7 @@ export type SplitType = "personal" | "shared" | "custom";
 export type ShortcutExpensePayload = {
   amount: number;
   category_id?: string | null;
+  category_name?: string | null;
   expense_date: string;
   description?: string;
   split_type: SplitType;

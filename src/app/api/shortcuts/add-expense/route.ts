@@ -40,7 +40,9 @@ function parseSplitType(value: unknown) {
   return null;
 }
 
-function parsePayload(body: unknown): { payload: ShortcutExpensePayload; errors: string[] } | null {
+function parsePayload(
+  body: unknown,
+): { payload: ShortcutExpensePayload; errors: string[] } | null {
   if (!body || typeof body !== "object") {
     return null;
   }
@@ -67,12 +69,19 @@ function parsePayload(body: unknown): { payload: ShortcutExpensePayload; errors:
     return { payload: null as unknown as ShortcutExpensePayload, errors };
   }
 
-  const description = typeof candidate.description === "string" ? candidate.description.trim() : undefined;
-  const categoryId = candidate.category_id == null ? null : parseString(candidate.category_id);
+  const description =
+    typeof candidate.description === "string"
+      ? candidate.description.trim()
+      : undefined;
+  const categoryId =
+    candidate.category_id == null ? null : parseString(candidate.category_id);
+  const categoryName =
+    parseString(candidate.category_name) ?? parseString(candidate.category);
   const customRatio =
     candidate.custom_ratio == null
       ? null
-      : typeof candidate.custom_ratio === "number" && Number.isFinite(candidate.custom_ratio)
+      : typeof candidate.custom_ratio === "number" &&
+          Number.isFinite(candidate.custom_ratio)
         ? candidate.custom_ratio
         : null;
 
@@ -82,6 +91,7 @@ function parsePayload(body: unknown): { payload: ShortcutExpensePayload; errors:
       expense_date: expenseDate!,
       split_type: splitType!,
       category_id: categoryId,
+      category_name: categoryName,
       description,
       custom_ratio: customRatio,
     },
@@ -91,7 +101,9 @@ function parsePayload(body: unknown): { payload: ShortcutExpensePayload; errors:
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization") ?? "";
-  const receivedToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const receivedToken = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
 
   if (!receivedToken) {
     return unauthorized("Missing shortcut token.");
@@ -108,14 +120,20 @@ export async function POST(request: NextRequest) {
   const parsed = parsePayload(body);
 
   if (!parsed || parsed.errors.length > 0) {
-    const details = parsed ? parsed.errors.join("; ") : "Request body must be a JSON object.";
+    const details = parsed
+      ? parsed.errors.join("; ")
+      : "Request body must be a JSON object.";
     return badRequest(`Missing or invalid expense fields: ${details}`);
   }
 
   const payload = parsed.payload;
 
   if (payload.split_type === "custom") {
-    if (typeof payload.custom_ratio !== "number" || payload.custom_ratio <= 0 || payload.custom_ratio > 1) {
+    if (
+      typeof payload.custom_ratio !== "number" ||
+      payload.custom_ratio <= 0 ||
+      payload.custom_ratio > 1
+    ) {
       return badRequest("Custom split ratio must be between 0 and 1.");
     }
   }
@@ -136,11 +154,13 @@ export async function POST(request: NextRequest) {
     return unauthorized("Invalid shortcut token.");
   }
 
-  if (payload.category_id) {
+  let resolvedCategoryId = payload.category_id ?? null;
+
+  if (resolvedCategoryId) {
     const { data: category, error: categoryError } = await admin
       .from("categories")
       .select("id, couple_id")
-      .eq("id", payload.category_id)
+      .eq("id", resolvedCategoryId)
       .maybeSingle();
 
     if (categoryError) {
@@ -150,6 +170,35 @@ export async function POST(request: NextRequest) {
     if (!category || category.couple_id !== user.couple_id) {
       return forbidden("Category does not belong to the current couple.");
     }
+  } else if (payload.category_name) {
+    const { data: categories, error: categoriesError } = await admin
+      .from("categories")
+      .select("id, name")
+      .eq("couple_id", user.couple_id);
+
+    if (categoriesError) {
+      return badRequest(categoriesError.message);
+    }
+
+    const normalizedCategoryName = payload.category_name.toLocaleLowerCase();
+    const matchedCategory = categories?.find(
+      (category) =>
+        category.name.toLocaleLowerCase() === normalizedCategoryName,
+    );
+
+    if (!matchedCategory) {
+      const availableCategories = categories
+        ?.map((category) => category.name)
+        .sort()
+        .join(", ");
+      return badRequest(
+        availableCategories
+          ? `Category "${payload.category_name}" was not found. Use one of: ${availableCategories}.`
+          : `Category "${payload.category_name}" was not found. Create categories in FireTogether first.`,
+      );
+    }
+
+    resolvedCategoryId = matchedCategory.id;
   }
 
   const { data: expense, error: insertError } = await admin
@@ -157,14 +206,17 @@ export async function POST(request: NextRequest) {
     .insert({
       couple_id: user.couple_id,
       user_id: user.id,
-      category_id: payload.category_id ?? null,
+      category_id: resolvedCategoryId,
       amount: payload.amount,
       description: payload.description ?? null,
       expense_date: payload.expense_date,
       split_type: payload.split_type,
-      custom_ratio: payload.split_type === "custom" ? payload.custom_ratio : null,
+      custom_ratio:
+        payload.split_type === "custom" ? payload.custom_ratio : null,
     })
-    .select("id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at")
+    .select(
+      "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+    )
     .single();
 
   if (insertError) {
@@ -176,6 +228,6 @@ export async function POST(request: NextRequest) {
       ok: true,
       expense,
     },
-    { status: 201 }
+    { status: 201 },
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppNavigation } from "@/components/layout/app-navigation";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -50,7 +51,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body className="min-h-dvh flex flex-col bg-background text-foreground">
-        <main className="flex-1">{children}</main>
+        <AppNavigation />
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
         <Toaster position="top-center" richColors />
       </body>
     </html>

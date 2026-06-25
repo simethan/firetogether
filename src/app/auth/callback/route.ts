@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-import { getSiteUrl } from "@/lib/siteUrl";
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -17,7 +15,7 @@ export async function GET(request: Request) {
     const message = oauthErrorDescription || oauthError;
     console.error("OAuth provider error:", oauthError, oauthErrorDescription);
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(message)}`, url.origin)
+      new URL(`/login?error=${encodeURIComponent(message)}`, url.origin),
     );
   }
 
@@ -43,7 +41,11 @@ export async function GET(request: Request) {
     }
   }
 
-  const cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
+  const cookiesToSet: Array<{
+    name: string;
+    value: string;
+    options: Record<string, unknown>;
+  }> = [];
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -52,7 +54,11 @@ export async function GET(request: Request) {
       },
       setAll(cookies) {
         for (const c of cookies) {
-          cookiesToSet.push({ name: c.name, value: c.value, options: c.options });
+          cookiesToSet.push({
+            name: c.name,
+            value: c.value,
+            options: c.options,
+          });
         }
       },
     },
@@ -63,7 +69,7 @@ export async function GET(request: Request) {
   if (error) {
     console.error("exchangeCodeForSession error:", error.message);
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, url.origin)
+      new URL(`/login?error=${encodeURIComponent(error.message)}`, url.origin),
     );
   }
 
