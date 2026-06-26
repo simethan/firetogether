@@ -2,16 +2,9 @@
 
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
+import type { ExpenseFormState } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-export type ExpenseFormState = {
-  error: string | null;
-};
-
-export const initialExpenseFormState: ExpenseFormState = {
-  error: null,
-};
 
 function parseNumber(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {

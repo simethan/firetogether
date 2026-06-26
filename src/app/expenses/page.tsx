@@ -586,7 +586,7 @@ export default async function ExpensesPage() {
 
                 return (
                   <div key={expense.id}>
-                    <div className="grid gap-3 rounded-2xl p-3 transition-colors hover:bg-muted/40 md:grid-cols-[1fr_auto] md:items-center">
+                    <div className="grid gap-3 rounded-2xl p-3 transition-colors hover:bg-muted/40 md:grid-cols-[1fr_auto_auto] md:items-center">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                           <CategoryIcon icon={category?.icon} fallback="💸" />
@@ -648,6 +648,14 @@ export default async function ExpensesPage() {
                           </div>
                         </div>
                       </div>
+
+                      <Link
+                        href={`/expenses/${expense.id}/edit`}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        aria-label="Edit expense"
+                      >
+                        ✏️
+                      </Link>
                     </div>
                     {index < typedExpenses.length - 1 ? <Separator /> : null}
                   </div>

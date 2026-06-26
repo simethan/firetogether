@@ -48,6 +48,14 @@ export type Budget = {
   categories?: Category;
 };
 
+export type ExpenseFormState = {
+  error: string | null;
+};
+
+export const initialExpenseFormState: ExpenseFormState = {
+  error: null,
+};
+
 export type SavingsGoal = {
   id: string;
   couple_id: string;
