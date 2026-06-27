@@ -44,9 +44,17 @@ export function AppNavigation() {
   }
 
   const isAddExpenseActive = pathname === "/expenses/new";
+  const isLoggedIn = !(publicRoutes.has(pathname) || pathname.startsWith("/auth"));
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   return (
     <>
+      {/* Sidebar spacer — pushes main content right */}
+      <div className="hidden w-60 shrink-0 md:block" aria-hidden="true" />
+
       {/* Desktop sidebar — visible from md breakpoint */}
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-60 flex-col border-r border-border/70 bg-card md:flex">
         {/* Gradient stripe */}

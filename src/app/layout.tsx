@@ -40,8 +40,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body className="min-h-dvh flex flex-col bg-background text-foreground">
-        <AppNavigation />
-        <main className="flex-1 pb-20 md:pb-0 md:pl-60">{children}</main>
+        <div className="flex flex-1 flex-row">
+          <AppNavigation />
+          <main className="relative min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+        </div>
         <Toaster position="top-center" richColors />
       </body>
     </html>
