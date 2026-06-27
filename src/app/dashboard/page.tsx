@@ -37,18 +37,6 @@ function formatShortDate(value: string) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
-function getSettleCopy(summary: ReturnType<typeof calculateDashboardSummary>) {
-  if (!summary.balanceA || !summary.balanceB) {
-    return "Invite your partner to calculate settle-up.";
-  }
-
-  if (summary.settleUpAmount < 0.01) {
-    return "You’re square for shared expenses.";
-  }
-
-  return `${summary.balanceB.name} owes ${summary.balanceA.name}.`;
-}
-
 export default async function DashboardPage() {
   const authUserId = await getAuthUserId();
 
@@ -188,7 +176,7 @@ export default async function DashboardPage() {
             </div>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
               A clean read on this month: what the couple spent, what you paid,
-              and whether shared expenses need settling.
+              and how shared expenses are split.
             </p>
           </div>
 
@@ -261,13 +249,13 @@ export default async function DashboardPage() {
 
         <Card className="border-border/60 shadow-sm" size="sm">
           <CardHeader>
-            <CardDescription>Settle-up</CardDescription>
+            <CardDescription>Personal spend</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
-              {formatCurrency(summary.settleUpAmount)}
+              {formatCurrency(summary.personalSpent)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {getSettleCopy(summary)}
+            Your own personal expenses.
           </CardContent>
         </Card>
       </section>

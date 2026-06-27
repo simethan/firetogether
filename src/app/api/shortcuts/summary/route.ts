@@ -135,11 +135,9 @@ export async function GET(request: NextRequest) {
       remaining_formatted: budgetRemaining === null ? null : formatCurrency(budgetRemaining),
       percent: overallBudgetAmount ? Math.min(100, Math.round((mySpend / overallBudgetAmount) * 100)) : null,
     },
-    settle_up: {
-      amount: summary.settleUpAmount,
-      amount_formatted: formatCurrency(summary.settleUpAmount),
-      from: summary.balanceB?.name ?? null,
-      to: summary.balanceA?.name ?? null,
+    personal: {
+      amount: summary.personalSpent,
+      amount_formatted: formatCurrency(summary.personalSpent),
     },
     top_category: topCategory
       ? {

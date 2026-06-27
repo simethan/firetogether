@@ -502,7 +502,7 @@ Script.complete();`;
               </p>
               <p className="mt-1">
                 The widget reads your monthly spend, budget remaining,
-                settle-up, and top category.
+                personal spend, and top category.
               </p>
             </div>
           </CardContent>

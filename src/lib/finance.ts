@@ -10,7 +10,6 @@ export type MemberBalance = {
   name: string;
   paid: number;
   owed: number;
-  net: number;
 };
 
 export type CategorySummary = {
@@ -27,8 +26,51 @@ export type DashboardSummary = {
   personalSpent: number;
   balanceA: MemberBalance | null;
   balanceB: MemberBalance | null;
-  settleUpAmount: number;
   categorySummaries: CategorySummary[];
+};
+
+export type MonthlyTrend = {
+  month: string;
+  label: string;
+  total: number;
+  sharedSpent: number;
+  personalSpent: number;
+};
+
+export type BalancePoint = {
+  month: string;
+  label: string;
+  paidBy: { userId: string; name: string; amount: number };
+  paidByPartner: { userId: string; name: string; amount: number };
+  netBalance: number;
+};
+
+export type StreakInfo = {
+  currentStreak: number;
+  longestStreak: number;
+  totalExpenses: number;
+  firstExpenseDate: string | null;
+  expenseDates: string[];
+};
+
+export type RecurringExpense = {
+  categoryId: string | null;
+  categoryName: string;
+  categoryIcon: string | null;
+  amount: number;
+  monthsAppeared: number;
+  months: string[];
+  description: string | null;
+};
+
+export type SpendingInsight = {
+  type: "increase" | "decrease" | "new" | "milestone";
+  categoryName: string;
+  categoryIcon: string | null;
+  currentAmount: number;
+  previousAmount: number;
+  percentChange: number;
+  message: string;
 };
 
 export function getCurrentMonthValue() {
@@ -39,12 +81,72 @@ export function getMonthStartDate(monthValue: string) {
   return `${monthValue}-01`;
 }
 
+export function getNextMonthEnd(monthValue: string) {
+  const [year, month] = monthValue.split("-").map(Number);
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+}
+
+export function getMonthOffset(monthsBack: number, fromMonth?: string) {
+  const [year, month] = (fromMonth ?? getCurrentMonthValue())
+    .split("-")
+    .map(Number);
+  let totalMonths = year * 12 + month - 1 - monthsBack;
+  const y = Math.floor(totalMonths / 12);
+  const m = totalMonths % 12 + 1;
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+export function getLastNMonths(count: number, fromMonth?: string): string[] {
+  const months: string[] = [];
+  for (let i = 0; i < count; i++) {
+    months.push(getMonthOffset(i, fromMonth));
+  }
+  return months;
+}
+
+export function getMonthRange(startMonth: string, endMonth: string): string[] {
+  const [sy, sm] = startMonth.split("-").map(Number);
+  const [ey, em] = endMonth.split("-").map(Number);
+  const months: string[] = [];
+  const start = sy * 12 + sm;
+  const end = ey * 12 + em;
+  for (let m = start; m <= end; m++) {
+    const y = Math.floor(m / 12);
+    const month = m % 12;
+    months.push(`${y}-${String(month === 0 ? 12 : month).padStart(2, "0")}`);
+  }
+  return months;
+}
+
 export function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+export function formatMonthLabel(monthValue: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${monthValue}-01T00:00:00`));
+}
+
+export function formatShortMonthLabel(monthValue: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${monthValue}-01T00:00:00`));
+}
+
+export function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
 }
 
 function roundCurrency(value: number) {
@@ -86,7 +188,6 @@ export function calculateDashboardSummary({
       name: user.name,
       paid: 0,
       owed: 0,
-      net: 0,
     });
   }
 
@@ -113,7 +214,6 @@ export function calculateDashboardSummary({
 
     if (payer) {
       payer.owed += payerShare;
-      payer.net += expense.amount - payerShare;
     }
 
     const otherUsers = users.filter((user) => user.id !== expense.user_id);
@@ -123,18 +223,13 @@ export function calculateDashboardSummary({
       const balance = userBalances.get(otherUser.id);
       if (balance) {
         balance.owed += partnerShare;
-        balance.net -= partnerShare;
       }
     }
   }
 
-  const members = Array.from(userBalances.values()).sort(
-    (left, right) => right.net - left.net,
-  );
+  const members = Array.from(userBalances.values());
   const balanceA = members[0] ?? null;
   const balanceB = members[1] ?? null;
-  const settleUpAmount =
-    balanceA && balanceB ? roundCurrency(Math.abs(balanceA.net)) : 0;
 
   const categoryTotals = new Map<string | null, number>();
   for (const expense of expenses) {
@@ -150,8 +245,9 @@ export function calculateDashboardSummary({
   const categorySummaries = Array.from(categoryTotals.entries())
     .map(([categoryId, amount]) => {
       const category = categories.find((item) => item.id === categoryId);
+      const currentMonth = getCurrentMonthValue();
       const budget = budgetMap.get(
-        `${categoryId ?? "overall"}:${new Date().toISOString().slice(0, 7)}-01`,
+        `${categoryId ?? "overall"}:${currentMonth}-01`,
       );
 
       return {
@@ -172,7 +268,6 @@ export function calculateDashboardSummary({
     personalSpent: roundCurrency(personalSpent),
     balanceA,
     balanceB,
-    settleUpAmount: roundCurrency(settleUpAmount),
     categorySummaries,
   };
 }
@@ -186,4 +281,271 @@ export function getGoalProgress(goal: SavingsGoal) {
     100,
     Math.round((goal.current_amount / goal.target_amount) * 100),
   );
+}
+
+export function computeMonthlyTrends(
+  expenses: Expense[],
+  users: User[],
+): MonthlyTrend[] {
+  const byMonth = new Map<string, { total: number; shared: number; personal: number }>();
+
+  for (const expense of expenses) {
+    const month = expense.expense_date.slice(0, 7);
+    if (!byMonth.has(month)) {
+      byMonth.set(month, { total: 0, shared: 0, personal: 0 });
+    }
+    const bucket = byMonth.get(month)!;
+    bucket.total += Number(expense.amount);
+    if (expense.split_type === "personal") {
+      bucket.personal += Number(expense.amount);
+    } else {
+      bucket.shared += Number(expense.amount);
+    }
+  }
+
+  return Array.from(byMonth.entries())
+    .map(([month, val]) => ({
+      month,
+      label: formatShortMonthLabel(month),
+      total: roundCurrency(val.total),
+      sharedSpent: roundCurrency(val.shared),
+      personalSpent: roundCurrency(val.personal),
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+export function computeBalanceTimeline(
+  expenses: Expense[],
+  users: User[],
+): BalancePoint[] {
+  const byMonth = new Map<string, { payer: Map<string, number>; partner: Map<string, number> }>();
+
+  for (const expense of expenses) {
+    const month = expense.expense_date.slice(0, 7);
+    if (!byMonth.has(month)) {
+      byMonth.set(month, { payer: new Map(), partner: new Map() });
+    }
+    const bucket = byMonth.get(month)!;
+    const payerId = expense.user_id ?? "";
+    const { payer: payerShare, partner: partnerShare } =
+      getShareForExpense(expense);
+
+    bucket.payer.set(payerId, (bucket.payer.get(payerId) ?? 0) + payerShare);
+    const otherUsers = users.filter((u) => u.id !== payerId);
+    if (otherUsers[0]) {
+      const partnerId = otherUsers[0].id;
+      bucket.partner.set(partnerId, (bucket.partner.get(partnerId) ?? 0) + partnerShare);
+    }
+  }
+
+  const userA = users[0];
+  const userB = users[1];
+
+  if (!userA || !userB) return [];
+
+  return Array.from(byMonth.entries())
+    .map(([month, val]) => {
+      const aPaid = roundCurrency(val.payer.get(userA.id) ?? 0);
+      const bPaid = roundCurrency(val.payer.get(userB.id) ?? 0);
+      const aOwedFromShared = roundCurrency(val.partner.get(userA.id) ?? 0);
+      const bOwedFromShared = roundCurrency(val.partner.get(userB.id) ?? 0);
+      const aNet = roundCurrency(aPaid - aOwedFromShared);
+      const bNet = roundCurrency(bPaid - bOwedFromShared);
+
+      return {
+        month,
+        label: formatShortMonthLabel(month),
+        paidBy: { userId: userA.id, name: userA.name, amount: aPaid },
+        paidByPartner: { userId: userB.id, name: userB.name, amount: bPaid },
+        netBalance: roundCurrency(aNet - bNet),
+      };
+    })
+    .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+export function detectStreaks(expenses: Expense[]): StreakInfo {
+  const dates = [
+    ...new Set(expenses.map((e) => e.expense_date)),
+  ].sort((a, b) => a.localeCompare(b));
+
+  if (dates.length === 0) {
+    return { currentStreak: 0, longestStreak: 0, totalExpenses: expenses.length, firstExpenseDate: null, expenseDates: [] };
+  }
+
+  let longestStreak = 1;
+  let currentRun = 1;
+
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(dates[i - 1]);
+    const curr = new Date(dates[i]);
+    const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+    if (diff === 1) {
+      currentRun++;
+      longestStreak = Math.max(longestStreak, currentRun);
+    } else if (diff > 1) {
+      currentRun = 1;
+    }
+  }
+
+  // Current streak: count from most recent date backwards
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDate = dates[dates.length - 1];
+  const daysSinceLast = Math.round(
+    (new Date(today).getTime() - new Date(lastDate).getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
+
+  let currentStreak = 0;
+  if (daysSinceLast <= 1) {
+    // The streak is active
+    currentStreak = 1;
+    for (let i = dates.length - 2; i >= 0; i--) {
+      const curr = new Date(dates[i + 1]);
+      const prev = new Date(dates[i]);
+      const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+      if (diff === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return {
+    currentStreak,
+    longestStreak,
+    totalExpenses: expenses.length,
+    firstExpenseDate: dates[0],
+    expenseDates: dates,
+  };
+}
+
+export function detectRecurringExpenses(
+  expenses: Expense[],
+  categories: Category[],
+): RecurringExpense[] {
+  const grouped = new Map<string, { amount: number; categoryId: string | null; months: Set<string>; description: string | null }>();
+
+  for (const expense of expenses) {
+    const key = `${expense.category_id ?? "null"}|${Math.round(Number(expense.amount) * 100)}`;
+    const month = expense.expense_date.slice(0, 7);
+
+    if (grouped.has(key)) {
+      const entry = grouped.get(key)!;
+      entry.months.add(month);
+    } else {
+      grouped.set(key, {
+        amount: Number(expense.amount),
+        categoryId: expense.category_id,
+        months: new Set([month]),
+        description: expense.description,
+      });
+    }
+  }
+
+  return Array.from(grouped.entries())
+    .map(([key, entry]) => {
+      const category = entry.categoryId
+        ? categories.find((c) => c.id === entry.categoryId)
+        : null;
+      return {
+        categoryId: entry.categoryId,
+        categoryName: category?.name ?? "Uncategorized",
+        categoryIcon: category?.icon ?? null,
+        amount: entry.amount,
+        monthsAppeared: entry.months.size,
+        months: Array.from(entry.months).sort(),
+        description: entry.description,
+      };
+    })
+    .filter((r) => r.monthsAppeared >= 2)
+    .sort((a, b) => b.monthsAppeared - a.monthsAppeared)
+    .slice(0, 5);
+}
+
+export function generateInsights(
+  currentExpenses: DashboardExpenseWithCategory[],
+  previousExpenses: DashboardExpenseWithCategory[],
+  categories: Category[],
+): SpendingInsight[] {
+  const insights: SpendingInsight[] = [];
+
+  // Per-category comparison
+  const catCurrent = new Map<string | null, number>();
+  const catPrevious = new Map<string | null, number>();
+
+  for (const e of currentExpenses) {
+    const key = e.category_id ?? null;
+    catCurrent.set(key, (catCurrent.get(key) ?? 0) + Number(e.amount));
+  }
+  for (const e of previousExpenses) {
+    const key = e.category_id ?? null;
+    catPrevious.set(key, (catPrevious.get(key) ?? 0) + Number(e.amount));
+  }
+
+  const allKeys = new Set([...catCurrent.keys(), ...catPrevious.keys()]);
+  for (const key of allKeys) {
+    const curr = catCurrent.get(key) ?? 0;
+    const prev = catPrevious.get(key) ?? 0;
+    const category = key ? categories.find((c) => c.id === key) : null;
+
+    if (prev > 0 && curr > 0) {
+      const change = ((curr - prev) / prev) * 100;
+      if (Math.abs(change) >= 15) {
+        insights.push({
+          type: change > 0 ? "increase" : "decrease",
+          categoryName: category?.name ?? "Uncategorized",
+          categoryIcon: category?.icon ?? null,
+          currentAmount: roundCurrency(curr),
+          previousAmount: roundCurrency(prev),
+          percentChange: Math.round(change),
+          message: change > 0
+            ? `${Math.round(change)}% more on ${category?.name ?? "uncategorized"} this month`
+            : `${Math.abs(Math.round(change))}% less on ${category?.name ?? "uncategorized"} this month`,
+        });
+      }
+    } else if (prev === 0 && curr > 0) {
+      insights.push({
+        type: "new",
+        categoryName: category?.name ?? "Uncategorized",
+        categoryIcon: category?.icon ?? null,
+        currentAmount: roundCurrency(curr),
+        previousAmount: 0,
+        percentChange: 100,
+        message: `New spending on ${category?.name ?? "uncategorized"} — ${formatCurrency(curr)} this month`,
+      });
+    }
+  }
+
+  // Total comparison
+  const currentTotal = currentExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const previousTotal = previousExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  if (previousTotal > 0 && currentTotal > 0) {
+    const change = ((currentTotal - previousTotal) / previousTotal) * 100;
+    if (Math.abs(change) >= 10) {
+      insights.unshift({
+        type: change > 0 ? "increase" : "decrease",
+        categoryName: "Overall",
+        categoryIcon: null,
+        currentAmount: roundCurrency(currentTotal),
+        previousAmount: roundCurrency(previousTotal),
+        percentChange: Math.round(change),
+        message: change > 0
+          ? `Overall spending up ${Math.round(change)}% from last month`
+          : `Overall spending down ${Math.abs(Math.round(change))}% from last month — keep it up!`,
+      });
+    }
+  }
+
+  return insights.slice(0, 4);
+}
+
+export function getSpendingPersonality(totalSpent: number, sharedRatio: number, personalRatio: number): string {
+  const total = totalSpent;
+  if (total === 0) return "Starting out";
+  if (sharedRatio > 0.6) return "Team player";
+  if (personalRatio > 0.6) return "Independent";
+  if (total > 10000) return "High roller";
+  if (total < 1000) return "Minimalist";
+  return "Balanced";
 }

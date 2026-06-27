@@ -32,7 +32,6 @@ type MemberBreakdown = {
   responsible: number;
   personal: number;
   sharedPaid: number;
-  net: number;
 };
 
 type SplitBreakdown = {
@@ -70,7 +69,15 @@ function formatDate(value: string) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
-export default async function ExpensesPage() {
+export default async function ExpensesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(String(pageParam ?? "1"), 10) || 1);
+  const pageSize = 20;
+
   const authUserId = await getAuthUserId();
 
   if (!authUserId) {
@@ -91,8 +98,11 @@ export default async function ExpensesPage() {
   const currentMonth = getCurrentMonthValue();
   const currentMonthStart = getMonthStartDate(currentMonth);
 
-  const [{ data: members }, { data: categories }, { data: expenses }] =
-    await Promise.all([
+  const [
+    { data: members },
+    { data: categories },
+    { data: expenses, count: expensesCount },
+  ] = await Promise.all([
       admin
         .from("users")
         .select("id, couple_id, email, name, created_at")
@@ -108,17 +118,23 @@ export default async function ExpensesPage() {
         .from("expenses")
         .select(
           "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+          { count: "exact" },
         )
         .eq("couple_id", currentUser.couple_id)
         .gte("expense_date", currentMonthStart)
         .order("expense_date", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(200),
+        .range(
+          (currentPage - 1) * pageSize,
+          currentPage * pageSize - 1,
+        ),
     ]);
 
   const typedMembers = (members ?? []) as User[];
   const typedCategories = (categories ?? []) as Category[];
   const typedExpenses = (expenses ?? []) as Expense[];
+  const totalExpenseCount = expensesCount ?? 0;
+  const totalPages = Math.ceil(totalExpenseCount / pageSize);
   const categoryById = new Map(
     typedCategories.map((category) => [category.id, category]),
   );
@@ -137,7 +153,6 @@ export default async function ExpensesPage() {
       responsible: 0,
       personal: 0,
       sharedPaid: 0,
-      net: 0,
     });
   }
 
@@ -148,7 +163,7 @@ export default async function ExpensesPage() {
         label: "Shared 50/50",
         total: 0,
         count: 0,
-        description: "Even split expenses that affect settle-up.",
+        description: "Evenly split between both partners.",
       },
     ],
     [
@@ -213,7 +228,6 @@ export default async function ExpensesPage() {
     if (payer) {
       payer.paid += amount;
       payer.responsible += payerShare;
-      payer.net += amount - payerShare;
 
       if (expense.split_type === "personal") {
         payer.personal += amount;
@@ -224,7 +238,6 @@ export default async function ExpensesPage() {
 
     if (other) {
       other.responsible += partnerShare;
-      other.net -= partnerShare;
     }
 
     if (split) {
@@ -313,8 +326,8 @@ export default async function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Across {typedExpenses.length} expense
-            {typedExpenses.length === 1 ? "" : "s"}.
+            Across {totalExpenseCount} expense
+            {totalExpenseCount === 1 ? "" : "s"}.
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -347,7 +360,7 @@ export default async function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Expenses that affect settle-up.
+            Shared and custom split expenses.
           </CardContent>
         </Card>
       </div>
@@ -379,8 +392,8 @@ export default async function ExpensesPage() {
                         {member.user.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Net {member.net >= 0 ? "ahead" : "behind"} by{" "}
-                        {formatCurrency(Math.abs(roundCurrency(member.net)))}
+                        Responsible for{" "}
+                        {formatCurrency(roundCurrency(member.responsible))}
                       </div>
                     </div>
                     <Badge
@@ -440,7 +453,7 @@ export default async function ExpensesPage() {
             {!partnerBreakdown ? (
               <p className="rounded-xl border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
                 Invite your partner to see two-person responsibility and
-                settle-up comparisons.
+                shared expense breakdowns.
               </p>
             ) : null}
           </CardContent>
@@ -666,6 +679,40 @@ export default async function ExpensesPage() {
             <p className="text-sm text-muted-foreground">
               No transaction details to show yet.
             </p>
+          )}
+
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                {currentPage > 1 ? (
+                  <Link
+                    href={`/expenses?page=${currentPage - 1}`}
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                  >
+                    ← Previous
+                  </Link>
+                ) : (
+                  <span className="inline-flex h-9 items-center justify-center rounded-xl border border-border/40 bg-muted/30 px-4 text-sm font-medium text-muted-foreground">
+                    ← Previous
+                  </span>
+                )}
+                {currentPage < totalPages ? (
+                  <Link
+                    href={`/expenses?page=${currentPage + 1}`}
+                    className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                  >
+                    Next →
+                  </Link>
+                ) : (
+                  <span className="inline-flex h-9 items-center justify-center rounded-xl border border-border/40 bg-muted/30 px-4 text-sm font-medium text-muted-foreground">
+                    Next →
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

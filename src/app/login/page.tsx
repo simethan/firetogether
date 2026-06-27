@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -92,24 +93,29 @@ function AuthForm() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md border-border/60 shadow-xl shadow-orange-500/5">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
-            🔥
-          </div>
-          <CardTitle className="text-2xl font-bold">
-            {isSignUp ? "Create your account" : "Sign in to FireTogether"}
+    <div className="flex min-h-full flex-col items-center justify-center px-4 py-12">
+      {/* Brand mark */}
+      <Link href="/" className="mb-8 flex items-center gap-2.5 font-semibold tracking-tight text-foreground">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-xl">
+          🔥
+        </span>
+        <span className="text-xl">FireTogether</span>
+      </Link>
+
+      <Card className="w-full max-w-sm border-border/60 shadow-xl shadow-orange-500/5">
+        <CardHeader className="text-center pb-2">
+          <CardTitle className="text-2xl font-bold tracking-tight">
+            {isSignUp ? "Create your account" : "Welcome back"}
           </CardTitle>
           <CardDescription>
             {isSignUp
-              ? "Sign up with email and password or use Google."
-              : "Sign in with email and password or use Google."}
+              ? "Sign up to start tracking finances together."
+              : "Sign in to your couple's dashboard."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 pt-2">
           {error && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-600 dark:text-red-400">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center text-sm text-destructive">
               {error}
             </div>
           )}
@@ -123,14 +129,14 @@ function AuthForm() {
           {/* Google OAuth button */}
           <Button
             variant="outline"
-            className="h-11 w-full text-base font-medium"
+            className="h-11 w-full text-sm font-medium"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || loading}
           >
             {googleLoading ? (
               <span className="animate-spin mr-2">🔥</span>
             ) : (
-              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                   fill="#4285F4"
@@ -191,7 +197,7 @@ function AuthForm() {
               />
             </div>
             <Button
-              className="h-11 w-full text-base font-semibold shadow-md shadow-primary/20"
+              className="h-11 w-full text-sm font-semibold shadow-md shadow-primary/20"
               type="submit"
               disabled={loading || googleLoading}
             >
