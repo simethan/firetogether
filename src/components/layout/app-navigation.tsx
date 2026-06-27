@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Calculator,
+  Calendar,
   Goal,
   Home,
   PlusCircle,
@@ -22,6 +23,7 @@ const primaryLinks = [
   { href: "/goals", label: "Goals", icon: Goal },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/shortcut", label: "Shortcut", icon: Smartphone },
+  { href: "/year-in-review", label: "Year in Review", icon: Calendar },
 ];
 
 const publicRoutes = new Set(["/", "/login", "/onboarding"]);
@@ -41,57 +43,31 @@ export function AppNavigation() {
     return null;
   }
 
+  const isAddExpenseActive = pathname === "/expenses/new";
+
   return (
     <>
-      <header className="sticky top-0 z-40 hidden border-b border-border/70 bg-background/90 backdrop-blur supports-backdrop-filter:bg-background/70 md:block">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-6 lg:px-8">
+      {/* Desktop sidebar — visible from md breakpoint */}
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-60 flex-col border-r border-border/70 bg-card md:flex">
+        {/* Gradient stripe */}
+        <div className="absolute right-0 top-6 h-24 w-0.5 rounded-full bg-linear-to-b from-primary via-chart-4 to-chart-2" />
+
+        {/* Brand */}
+        <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 font-semibold tracking-tight text-foreground"
+            className="flex items-center gap-2.5 font-semibold tracking-tight text-foreground"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-lg">
               🔥
             </span>
-            FireTogether
+            <span className="text-base">FireTogether</span>
           </Link>
-
-          <nav className="ml-4 flex flex-1 items-center gap-1">
-            {primaryLinks.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.href);
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                    active &&
-                      "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
-                  )}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <Link
-            href="/expenses/new"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
-          >
-            <PlusCircle className="h-4 w-4" />
-            Add expense
-          </Link>
-          <SignOutButton />
         </div>
-      </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
-        <div className="grid grid-cols-5 gap-1">
-          {primaryLinks.slice(0, 4).map((item) => {
+        {/* Nav links */}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+          {primaryLinks.map((item) => {
             const Icon = item.icon;
             const active = isActive(pathname, item.href);
 
@@ -100,21 +76,68 @@ export function AppNavigation() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  "relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  active &&
+                    "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                {active && (
+                  <span className="absolute -left-3 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                )}
+                <Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Bottom actions */}
+        <div className="space-y-1.5 border-t border-border/70 p-3">
+          <Link
+            href="/expenses/new"
+            className={cn(
+              "flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]",
+              isAddExpenseActive && "ring-2 ring-primary/30",
+            )}
+          >
+            <PlusCircle className="h-4 w-4" />
+            Add expense
+          </Link>
+          <SignOutButton />
+        </div>
+      </aside>
+
+      {/* Mobile bottom tab bar — hidden from md breakpoint */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
+        {/* Right-edge fade gradient to hint at scrollability */}
+        <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-10 bg-linear-to-r from-transparent to-background/95" />
+
+        <div className="flex gap-1 overflow-x-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 scrollbar-none">
+          {primaryLinks.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(pathname, item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-3 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                   active && "bg-primary/10 text-primary",
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
                 {item.label}
               </Link>
             );
           })}
           <Link
             href="/expenses/new"
-            className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-1 text-[11px] font-semibold text-primary-foreground shadow-md shadow-primary/20"
+            className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-3 text-[11px] font-semibold text-primary-foreground shadow-md shadow-primary/20"
           >
-            <PlusCircle className="h-4 w-4" />
+            <PlusCircle className="h-5 w-5" />
             Add
           </Link>
         </div>

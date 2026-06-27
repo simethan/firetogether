@@ -41,7 +41,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-dvh flex flex-col bg-background text-foreground">
         <AppNavigation />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main className="flex-1 pb-20 md:pb-0 md:pl-60">{children}</main>
         <Toaster position="top-center" richColors />
       </body>
     </html>

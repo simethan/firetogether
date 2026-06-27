@@ -11,33 +11,41 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CategoryIcon } from "@/components/categories/category-icon";
+import { CategoryHistoryDialog } from "@/components/dashboard/category-history-dialog";
+import { CoupleBalanceTimeline } from "@/components/dashboard/couple-balance-timeline";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { ExpenseStreaks } from "@/components/dashboard/expense-streaks";
+import { MonthSelector } from "@/components/dashboard/month-selector";
+import { RecurringExpenses } from "@/components/dashboard/recurring-expenses";
+import { SpendingInsights } from "@/components/dashboard/spending-insights";
+import { SpendingTrendsSparkline } from "@/components/dashboard/spending-trends-sparkline";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId, getCurrentCouple } from "@/lib/auth";
 import {
   calculateDashboardSummary,
+  computeBalanceTimeline,
+  computeCategoryHistory,
+  computeMonthlyTrends,
+  detectRecurringExpenses,
+  detectStreaks,
   formatCurrency,
+  formatMonthLabel,
+  formatShortDate,
+  generateInsights,
   getCurrentMonthValue,
   getGoalProgress,
+  getLastNMonths,
+  getMonthOffset,
   getMonthStartDate,
+  getNextMonthEnd,
 } from "@/lib/finance";
 import type { Budget, Category, Expense, SavingsGoal, User } from "@/lib/types";
 
-function formatMonthLabel(monthValue: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${monthValue}-01T00:00:00`));
-}
-
-function formatShortDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
-}
-
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const authUserId = await getAuthUserId();
 
   if (!authUserId) {
@@ -55,15 +63,35 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
+  const params = await searchParams;
+  const rawMonth = typeof params.month === "string" ? params.month : null;
+  const selectedMonth =
+    rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue()
+      ? rawMonth
+      : getCurrentMonthValue();
+
   const currentMonth = getCurrentMonthValue();
-  const currentMonthStart = getMonthStartDate(currentMonth);
-  const monthLabel = formatMonthLabel(currentMonth);
+  const currentMonthStart = getMonthStartDate(selectedMonth);
+  const monthLabel = formatMonthLabel(selectedMonth);
   const couple = await getCurrentCouple(user.couple_id);
+
+  // Multi-month ranges for trends, balance, recurring
+  const multiMonths = getLastNMonths(6, selectedMonth);
+  const multiMonthStart = getMonthStartDate(multiMonths[multiMonths.length - 1]);
+  const multiMonthEnd = getNextMonthEnd(selectedMonth);
+
+  // Previous month for insights
+  const prevMonth = getMonthOffset(1, selectedMonth);
+  const prevMonthStart = getMonthStartDate(prevMonth);
+  const prevMonthEnd = getMonthStartDate(selectedMonth);
 
   const [
     { data: members },
     { data: categories },
     { data: monthlyExpenses },
+    { data: multiMonthExpenses },
+    { data: prevMonthExpenses },
+    { data: allExpenses },
     { data: budgets },
     { data: goals },
   ] = await Promise.all([
@@ -85,9 +113,37 @@ export default async function DashboardPage() {
       )
       .eq("couple_id", user.couple_id)
       .gte("expense_date", currentMonthStart)
+      .lt("expense_date", getNextMonthEnd(selectedMonth))
       .order("expense_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(100),
+      .limit(200),
+    admin
+      .from("expenses")
+      .select(
+        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+      )
+      .eq("couple_id", user.couple_id)
+      .gte("expense_date", multiMonthStart)
+      .lt("expense_date", multiMonthEnd)
+      .order("expense_date", { ascending: false })
+      .limit(500),
+    admin
+      .from("expenses")
+      .select(
+        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+      )
+      .eq("couple_id", user.couple_id)
+      .gte("expense_date", prevMonthStart)
+      .lt("expense_date", prevMonthEnd)
+      .limit(200),
+    admin
+      .from("expenses")
+      .select(
+        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+      )
+      .eq("couple_id", user.couple_id)
+      .order("expense_date", { ascending: false })
+      .limit(500),
     admin
       .from("budgets")
       .select("id, couple_id, category_id, month, amount")
@@ -106,6 +162,9 @@ export default async function DashboardPage() {
   const typedMembers = (members ?? []) as User[];
   const typedCategories = (categories ?? []) as Category[];
   const typedMonthlyExpenses = (monthlyExpenses ?? []) as Expense[];
+  const typedMultiMonthExpenses = (multiMonthExpenses ?? []) as Expense[];
+  const typedPrevMonthExpenses = (prevMonthExpenses ?? []) as Expense[];
+  const typedAllExpenses = (allExpenses ?? []) as Expense[];
   const typedBudgets = (budgets ?? []) as Budget[];
   const typedGoals = (goals ?? []) as SavingsGoal[];
 
@@ -124,6 +183,38 @@ export default async function DashboardPage() {
     budgets: typedBudgets,
     categories: typedCategories,
   });
+
+  // Multi-month computed values
+  const trends = computeMonthlyTrends(typedMultiMonthExpenses);
+  const balanceTimeline = computeBalanceTimeline(
+    typedMultiMonthExpenses,
+    typedMembers,
+  );
+  const recurring = detectRecurringExpenses(
+    typedMultiMonthExpenses,
+    typedCategories,
+  );
+  const streaksInfo = detectStreaks(typedAllExpenses);
+  const hasSharedExpense = typedAllExpenses.some(
+    (e) => e.split_type !== "personal",
+  );
+
+  // Insights from current vs previous month
+  const currentWithMeta = typedMonthlyExpenses.map((expense) => ({
+    ...expense,
+    categories: categoryById.get(expense.category_id ?? "") ?? undefined,
+    users: userById.get(expense.user_id ?? "") ?? undefined,
+  }));
+  const prevWithMeta = typedPrevMonthExpenses.map((expense) => ({
+    ...expense,
+    categories: categoryById.get(expense.category_id ?? "") ?? undefined,
+    users: userById.get(expense.user_id ?? "") ?? undefined,
+  }));
+  const insights = generateInsights(
+    currentWithMeta,
+    prevWithMeta,
+    typedCategories,
+  );
 
   const recentExpenses = typedMonthlyExpenses.slice(0, 4);
   const myPaidThisMonth = typedMonthlyExpenses
@@ -155,24 +246,31 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
+      {/* Hero section */}
       <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 shadow-lg shadow-orange-500/5 sm:p-7 lg:p-8">
         <div className="absolute inset-y-6 left-0 w-1 rounded-r-full bg-linear-to-b from-primary via-chart-4 to-chart-2" />
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-4">
-            <Badge
-              variant="secondary"
-              className="w-fit border-primary/20 bg-primary/10 text-primary"
-            >
-              {monthLabel}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge
+                variant="secondary"
+                className="w-fit border-primary/20 bg-primary/10 text-primary"
+              >
+                {monthLabel}
+              </Badge>
+              <MonthSelector currentMonth={currentMonth} />
+            </div>
             <div className="space-y-2">
               <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">
                 Monthly spend
               </p>
-              <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                {formatCurrency(summary.totalSpent)}
-              </h1>
+              <div className="flex items-center gap-4">
+                <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+                  {formatCurrency(summary.totalSpent)}
+                </h1>
+                <SpendingTrendsSparkline trends={trends} />
+              </div>
             </div>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
               A clean read on this month: what the couple spent, what you paid,
@@ -210,6 +308,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      {/* KPI cards */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="border-border/60 shadow-sm" size="sm">
           <CardHeader>
@@ -260,6 +359,7 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
+      {/* Spend map + Budget + Goals */}
       <section className="grid gap-5 xl:grid-cols-[1.45fr_0.9fr]">
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
@@ -270,7 +370,7 @@ export default async function DashboardPage() {
                 </CardTitle>
                 <CardDescription>
                   Category totals for this month, including uncategorized
-                  spending.
+                  spending. Click a category to see its history.
                 </CardDescription>
               </div>
               <Link
@@ -281,8 +381,29 @@ export default async function DashboardPage() {
               </Link>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-1">
+            {/* Category bar chart */}
             <DashboardCharts data={summary.categorySummaries} />
+
+            {/* Category list with history dialog */}
+            {summary.categorySummaries.length > 0 && (
+              <div className="mt-4 divide-y divide-border/70 border-t border-border/70 pt-4">
+                {summary.categorySummaries.map((cat) => {
+                  const history = computeCategoryHistory(
+                    typedMultiMonthExpenses,
+                    cat.categoryId,
+                    multiMonths,
+                  );
+                  return (
+                    <CategoryHistoryDialog
+                      key={cat.categoryId ?? "__uncat__"}
+                      category={cat}
+                      history={history}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -411,6 +532,78 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      {/* Couple Balance Timeline */}
+      <section>
+        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-xl font-semibold">
+                  Couple balance
+                </CardTitle>
+                <CardDescription>
+                  How spending and shared expenses have been distributed between
+                  partners over time.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <CoupleBalanceTimeline data={balanceTimeline} />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Insights + Streaks + Recurring */}
+      <section className="grid gap-5 lg:grid-cols-3">
+        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">
+              Spending insights
+            </CardTitle>
+            <CardDescription>
+              Month-over-month changes in your spending patterns.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SpendingInsights insights={insights} />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">
+              Expense streaks
+            </CardTitle>
+            <CardDescription>
+              Your logging consistency and milestones.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExpenseStreaks
+              streaks={streaksInfo}
+              totalExpenses={streaksInfo.totalExpenses}
+              hasSharedExpense={hasSharedExpense}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">
+              Recurring
+            </CardTitle>
+            <CardDescription>
+              Expenses that appear regularly across months.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RecurringExpenses recurring={recurring} />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Recent activity + Quick actions */}
       <section className="grid gap-5 lg:grid-cols-[1fr_0.72fr]">
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
@@ -523,6 +716,12 @@ export default async function DashboardPage() {
               href="/goals"
             >
               Update goals
+            </Link>
+            <Link
+              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              href="/year-in-review"
+            >
+              Year in Review →
             </Link>
           </CardContent>
         </Card>

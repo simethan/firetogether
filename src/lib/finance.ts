@@ -73,6 +73,12 @@ export type SpendingInsight = {
   message: string;
 };
 
+export type MonthlyHistory = {
+  month: string;
+  label: string;
+  amount: number;
+};
+
 export function getCurrentMonthValue() {
   return new Date().toISOString().slice(0, 7);
 }
@@ -92,7 +98,7 @@ export function getMonthOffset(monthsBack: number, fromMonth?: string) {
   const [year, month] = (fromMonth ?? getCurrentMonthValue())
     .split("-")
     .map(Number);
-  let totalMonths = year * 12 + month - 1 - monthsBack;
+  const totalMonths = year * 12 + month - 1 - monthsBack;
   const y = Math.floor(totalMonths / 12);
   const m = totalMonths % 12 + 1;
   return `${y}-${String(m).padStart(2, "0")}`;
@@ -285,7 +291,6 @@ export function getGoalProgress(goal: SavingsGoal) {
 
 export function computeMonthlyTrends(
   expenses: Expense[],
-  users: User[],
 ): MonthlyTrend[] {
   const byMonth = new Map<string, { total: number; shared: number; personal: number }>();
 
@@ -444,7 +449,7 @@ export function detectRecurringExpenses(
   }
 
   return Array.from(grouped.entries())
-    .map(([key, entry]) => {
+    .map(([, entry]) => {
       const category = entry.categoryId
         ? categories.find((c) => c.id === entry.categoryId)
         : null;
@@ -548,4 +553,22 @@ export function getSpendingPersonality(totalSpent: number, sharedRatio: number, 
   if (total > 10000) return "High roller";
   if (total < 1000) return "Minimalist";
   return "Balanced";
+}
+
+export function computeCategoryHistory(
+  expenses: Expense[],
+  categoryId: string | null,
+  months: string[],
+): MonthlyHistory[] {
+  const byMonth = new Map<string, number>();
+  for (const expense of expenses) {
+    if ((expense.category_id ?? null) !== categoryId) continue;
+    const month = expense.expense_date.slice(0, 7);
+    byMonth.set(month, (byMonth.get(month) ?? 0) + Number(expense.amount));
+  }
+  return months.map((month) => ({
+    month,
+    label: formatShortMonthLabel(month),
+    amount: roundCurrency(byMonth.get(month) ?? 0),
+  }));
 }
