@@ -164,9 +164,7 @@ export default async function YearInReviewPage({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Header */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 shadow-lg shadow-orange-500/5 sm:p-7 lg:p-8">
-        <div className="absolute inset-y-6 left-0 w-1 rounded-r-full bg-linear-to-b from-primary via-chart-4 to-chart-2" />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 sm:p-7 lg:p-8">
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-3">
             <Badge
@@ -210,7 +208,7 @@ export default async function YearInReviewPage({
 
       {/* Annual summary cards */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Total spent</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -222,7 +220,7 @@ export default async function YearInReviewPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Biggest month</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -234,7 +232,7 @@ export default async function YearInReviewPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Top category</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums truncate">
@@ -246,7 +244,7 @@ export default async function YearInReviewPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Spending personality</CardDescription>
             <CardTitle className="text-2xl font-semibold">
@@ -264,7 +262,7 @@ export default async function YearInReviewPage({
       </section>
 
       {/* Monthly bar chart */}
-      <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+      <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold">
             Monthly spending
@@ -295,7 +293,7 @@ export default async function YearInReviewPage({
 
       {/* Category breakdown + Goals */}
       <section className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Category breakdown
@@ -353,7 +351,7 @@ export default async function YearInReviewPage({
         </Card>
 
         <div className="grid gap-5">
-          <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>

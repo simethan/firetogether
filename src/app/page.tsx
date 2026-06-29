@@ -44,7 +44,7 @@ export default function Home() {
       <section className="relative overflow-hidden border-b border-border/60">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center sm:gap-8 sm:py-28 lg:py-36">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-5xl shadow-lg shadow-primary/10">
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-5xl">
             🔥
           </div>
           <div className="space-y-4">
@@ -58,7 +58,7 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97]"
             >
               Get started — it's free
             </Link>
@@ -87,7 +87,7 @@ export default function Home() {
           {features.map((feature) => (
             <Card
               key={feature.title}
-              className="border-border/60 bg-card/50 shadow-sm shadow-orange-500/5 transition-shadow hover:shadow-md hover:shadow-orange-500/5"
+              className="border-border/60 bg-card/50 transition-shadow"
             >
               <CardContent className="flex gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -114,7 +114,7 @@ export default function Home() {
           </p>
           <Link
             href="/login"
-            className="mt-2 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
+            className="mt-2 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-8 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97]"
           >
             Get started
           </Link>

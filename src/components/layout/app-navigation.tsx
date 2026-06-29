@@ -55,8 +55,6 @@ export function AppNavigation() {
 
       {/* Desktop sidebar — visible from md breakpoint */}
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-60 flex-col border-r border-border/70 bg-card md:flex">
-        {/* Gradient stripe */}
-        <div className="absolute right-0 top-6 h-24 w-0.5 rounded-full bg-linear-to-b from-primary via-chart-4 to-chart-2" />
 
         {/* Brand */}
         <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
@@ -88,9 +86,7 @@ export function AppNavigation() {
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                {active && (
-                  <span className="absolute -left-3 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary animate-sidebar-active" />
-                )}
+
                 <Icon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
                 {item.label}
               </Link>
@@ -117,9 +113,6 @@ export function AppNavigation() {
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                {active && (
-                  <span className="absolute -left-3 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
-                )}
                 <Icon className="h-4 w-4 shrink-0" />
                 {item.label}
               </Link>
@@ -132,7 +125,7 @@ export function AppNavigation() {
           <Link
             href="/expenses/new"
             className={cn(
-              "flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]",
+              "flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97]",
               isAddExpenseActive && "ring-2 ring-primary/30",
             )}
           >
@@ -145,8 +138,6 @@ export function AppNavigation() {
 
       {/* Mobile bottom tab bar — hidden from md breakpoint */}
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
-        {/* Right-edge fade gradient to hint at scrollability */}
-        <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-10 bg-linear-to-r from-transparent to-background/95" />
 
         <div className="flex gap-1 overflow-x-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 scrollbar-none">
           {[...primaryLinks, ...secondaryLinks].map((item) => {
@@ -170,7 +161,7 @@ export function AppNavigation() {
           })}
           <Link
             href="/expenses/new"
-            className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-3 text-[11px] font-semibold text-primary-foreground shadow-md shadow-primary/20"
+            className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-3 text-[11px] font-semibold text-primary-foreground"
           >
             <PlusCircle className="h-5 w-5" />
             Add

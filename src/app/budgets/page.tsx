@@ -131,9 +131,7 @@ export default async function BudgetsPage({
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
-      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 shadow-lg shadow-orange-500/5 sm:p-7 lg:p-8">
-        <div className="absolute inset-y-6 left-0 w-1 rounded-r-full bg-linear-to-b from-chart-3 via-primary to-chart-2" />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-chart-3/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 sm:p-7 lg:p-8">
         <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-4">
             <Badge
@@ -189,7 +187,7 @@ export default async function BudgetsPage({
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.35fr]">
         <div className="grid gap-5 content-start">
-          <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <Card>
             <CardHeader>
               <CardTitle className="text-xl font-semibold">
                 Personal runway
@@ -238,7 +236,7 @@ export default async function BudgetsPage({
             </CardContent>
           </Card>
 
-          <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <Card>
             <CardHeader>
               <CardTitle className="text-xl font-semibold">
                 Add a limit
@@ -300,7 +298,7 @@ export default async function BudgetsPage({
           </Card>
         </div>
 
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>

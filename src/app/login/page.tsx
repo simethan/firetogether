@@ -102,7 +102,7 @@ function AuthForm() {
         <span className="text-xl">FireTogether</span>
       </Link>
 
-      <Card className="w-full max-w-sm border-border/60 shadow-xl shadow-orange-500/5">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-2xl font-bold tracking-tight">
             {isSignUp ? "Create your account" : "Welcome back"}
@@ -197,7 +197,7 @@ function AuthForm() {
               />
             </div>
             <Button
-              className="h-11 w-full text-sm font-semibold shadow-md shadow-primary/20"
+              className="h-11 w-full text-sm font-semibold"
               type="submit"
               disabled={loading || googleLoading}
             >

@@ -67,9 +67,7 @@ export default async function ShortcutPage() {
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Hero — download the shortcut */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 shadow-lg shadow-orange-500/5 sm:p-7 lg:p-8">
-        <div className="absolute inset-y-6 left-0 w-1 rounded-r-full bg-linear-to-b from-primary via-chart-4 to-chart-2" />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 sm:p-7 lg:p-8">
         <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-4">
             <Badge
@@ -97,7 +95,7 @@ export default async function ShortcutPage() {
               href={shortcutUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.97]"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97]"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -124,7 +122,7 @@ export default async function ShortcutPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         {/* Token card */}
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Your auth token
@@ -144,7 +142,7 @@ export default async function ShortcutPage() {
         </Card>
 
         {/* Quick reference */}
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Quick reference

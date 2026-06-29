@@ -71,7 +71,7 @@ export default async function GoalsPage({
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-lg shadow-orange-500/5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card p-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-2">
           <Badge variant="secondary" className="w-fit">
             Savings goals
@@ -88,7 +88,7 @@ export default async function GoalsPage({
 
       <ErrorBanner searchParams={resolvedSearchParams} />
 
-      <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+      <Card>
         <CardHeader>
           <CardTitle>Create goal</CardTitle>
           <CardDescription>
@@ -173,7 +173,7 @@ export default async function GoalsPage({
             return (
               <Card
                 key={goal.id}
-                className="overflow-hidden border-border/60 shadow-lg shadow-orange-500/5"
+                className="overflow-hidden"
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -346,7 +346,7 @@ export default async function GoalsPage({
             );
           })
         ) : (
-          <Card className="border-border/60 shadow-lg shadow-orange-500/5 xl:col-span-2">
+          <Card className="xl:col-span-2">
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
               No savings goals yet. Create the first one above.
             </CardContent>

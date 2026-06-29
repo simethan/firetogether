@@ -109,7 +109,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-lg border-border/60 shadow-lg shadow-orange-500/5">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="text-2xl">Finish setting up your couple</CardTitle>
           <CardDescription>

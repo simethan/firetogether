@@ -50,7 +50,7 @@ export default async function EditExpensePage({
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-12">
       <div className="w-full max-w-3xl space-y-6">
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-3xl font-bold">✏️ Edit expense</CardTitle>
             <CardDescription>

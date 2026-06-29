@@ -223,20 +223,10 @@ export default async function DashboardPage({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Hero section */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card p-5 shadow-lg shadow-orange-500/5 sm:p-7 lg:p-8">
-        <div className="absolute inset-y-6 left-0 w-1 rounded-r-full bg-linear-to-b from-primary via-chart-4 to-chart-2" />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[2rem] bg-card p-5 sm:p-7 lg:p-8">
         <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Badge
-                variant="secondary"
-                className="w-fit border-primary/20 bg-primary/10 text-primary"
-              >
-                {monthLabel}
-              </Badge>
-              <MonthSelector currentMonth={currentMonth} />
-            </div>
+            <MonthSelector currentMonth={currentMonth} />
             <div className="space-y-2">
               <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">
                 Monthly spend
@@ -277,7 +267,7 @@ export default async function DashboardPage({
 
       {/* KPI cards */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Overall spend</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -289,7 +279,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Paid by me</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -301,7 +291,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Shared spend</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -313,7 +303,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm" size="sm">
+        <Card size="sm">
           <CardHeader>
             <CardDescription>Personal spend</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -328,7 +318,7 @@ export default async function DashboardPage({
 
       {/* Spend map + Budget + Goals */}
       <section className="grid gap-5 lg:grid-cols-[1.45fr_0.9fr]">
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -370,13 +360,11 @@ export default async function DashboardPage({
         </Card>
 
         <div className="grid gap-5">
-          <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle className="text-xl font-semibold">
-                    Budget
-                  </CardTitle>
+                  <CardTitle className="text-xl font-semibold">Budget</CardTitle>
                   <CardDescription>
                     Your individual monthly limit.
                   </CardDescription>
@@ -432,7 +420,7 @@ export default async function DashboardPage({
             </CardContent>
           </Card>
 
-          <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+          <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -496,7 +484,7 @@ export default async function DashboardPage({
 
       {/* Couple Balance Timeline */}
       <section>
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -518,7 +506,7 @@ export default async function DashboardPage({
 
       {/* Insights + Streaks + Recurring */}
       <section className="grid gap-5 lg:grid-cols-3">
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Spending insights
@@ -532,7 +520,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Expense streaks
@@ -550,7 +538,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Recurring
@@ -567,7 +555,7 @@ export default async function DashboardPage({
 
       {/* Recent activity + Quick actions */}
       <section className="grid gap-5 lg:grid-cols-[1fr_0.72fr]">
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -645,7 +633,7 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 bg-primary/5 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
               Quick actions
@@ -656,7 +644,7 @@ export default async function DashboardPage({
           </CardHeader>
           <CardContent className="grid gap-2">
             <Link
-              className="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-colors hover:bg-primary/90"
+              className="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               href="/expenses/new"
             >
               Add expense

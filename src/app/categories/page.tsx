@@ -53,7 +53,7 @@ export default async function CategoriesPage({
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-lg shadow-orange-500/5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card p-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-2">
           <Badge variant="secondary" className="w-fit">Categories</Badge>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Manage your couple&apos;s categories</h1>
@@ -65,7 +65,7 @@ export default async function CategoriesPage({
 
       <ErrorBanner searchParams={resolvedSearchParams} />
 
-      <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+      <Card>
         <CardHeader>
           <CardTitle>Add a category</CardTitle>
           <CardDescription>Create a custom category for your couple.</CardDescription>
@@ -75,7 +75,7 @@ export default async function CategoriesPage({
         </CardContent>
       </Card>
 
-      <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+      <Card>
         <CardHeader>
           <CardTitle>Your categories</CardTitle>
           <CardDescription>

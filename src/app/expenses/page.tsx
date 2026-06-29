@@ -266,8 +266,7 @@ export default async function ExpensesPage({
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-linear-to-br from-card via-card to-primary/5 p-6 shadow-lg shadow-orange-500/5 sm:p-8">
-        <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+      <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-linear-to-br from-card via-card to-primary/5 p-6 sm:p-8">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <Badge
@@ -289,7 +288,7 @@ export default async function ExpensesPage({
           <div className="flex flex-wrap gap-3">
             <Link
               href="/expenses/new"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 active:scale-[0.97]"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.97]"
             >
               + Add expense
             </Link>
@@ -304,7 +303,7 @@ export default async function ExpensesPage({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-border/60 shadow-sm">
+        <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total this month</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
@@ -316,7 +315,7 @@ export default async function ExpensesPage({
             {totalExpenseCount === 1 ? "" : "s"}.
           </CardContent>
         </Card>
-        <Card className="border-border/60 shadow-sm">
+        <Card>
           <CardHeader className="pb-2">
             <CardDescription>Paid by me</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
@@ -327,7 +326,7 @@ export default async function ExpensesPage({
             Cash out from {currentMember.name}.
           </CardContent>
         </Card>
-        <Card className="border-border/60 shadow-sm">
+        <Card>
           <CardHeader className="pb-2">
             <CardDescription>My responsibility</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
@@ -338,7 +337,7 @@ export default async function ExpensesPage({
             Your portion after split rules.
           </CardContent>
         </Card>
-        <Card className="border-border/60 shadow-sm">
+        <Card>
           <CardHeader className="pb-2">
             <CardDescription>Shared/custom total</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
@@ -352,7 +351,7 @@ export default async function ExpensesPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle>By person</CardTitle>
             <CardDescription>
@@ -445,7 +444,7 @@ export default async function ExpensesPage({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+        <Card>
           <CardHeader>
             <CardTitle>By split type</CardTitle>
             <CardDescription>
@@ -484,7 +483,7 @@ export default async function ExpensesPage({
         </Card>
       </div>
 
-      <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+      <Card>
         <CardHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -582,7 +581,7 @@ export default async function ExpensesPage({
         </CardContent>
       </Card>
 
-      <Card className="border-border/60 shadow-lg shadow-orange-500/5">
+      <Card>
         <CardHeader>
           <CardTitle>Transaction detail</CardTitle>
           <CardDescription>

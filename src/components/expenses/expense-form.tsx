@@ -41,7 +41,7 @@ export function ExpenseForm({ categories, expense }: ExpenseFormProps) {
   );
 
   return (
-    <Card className="w-full max-w-2xl border-border/60 shadow-lg shadow-orange-500/5">
+    <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardTitle className="text-2xl">{isEditing ? "Edit expense" : "New expense"}</CardTitle>
         <CardDescription>
