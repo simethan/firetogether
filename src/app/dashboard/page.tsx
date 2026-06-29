@@ -11,20 +11,20 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CategoryIcon } from "@/components/categories/category-icon";
-import { CategoryHistoryDialog } from "@/components/dashboard/category-history-dialog";
+import { CategoryFilter } from "@/components/expenses/category-filter";
 import { CoupleBalanceTimeline } from "@/components/dashboard/couple-balance-timeline";
-import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
+import { SpendMapSection } from "@/components/dashboard/spend-map-section";
 import { ExpenseStreaks } from "@/components/dashboard/expense-streaks";
 import { MonthSelector } from "@/components/dashboard/month-selector";
 import { RecurringExpenses } from "@/components/dashboard/recurring-expenses";
 import { SpendingInsights } from "@/components/dashboard/spending-insights";
 import { SpendingTrendsSparkline } from "@/components/dashboard/spending-trends-sparkline";
+import { WorkspaceDialog } from "@/components/dashboard/workspace-dialog";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId, getCurrentCouple } from "@/lib/auth";
 import {
   calculateDashboardSummary,
   computeBalanceTimeline,
-  computeCategoryHistory,
   computeMonthlyTrends,
   detectRecurringExpenses,
   detectStreaks,
@@ -69,6 +69,10 @@ export default async function DashboardPage({
     rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue()
       ? rawMonth
       : getCurrentMonthValue();
+  const categoryFilter =
+    typeof params.category === "string" && params.category.length > 0
+      ? params.category
+      : null;
 
   const currentMonth = getCurrentMonthValue();
   const currentMonthStart = getMonthStartDate(selectedMonth);
@@ -85,86 +89,55 @@ export default async function DashboardPage({
   const prevMonthStart = getMonthStartDate(prevMonth);
   const prevMonthEnd = getMonthStartDate(selectedMonth);
 
-  const [
-    { data: members },
-    { data: categories },
-    { data: monthlyExpenses },
-    { data: multiMonthExpenses },
-    { data: prevMonthExpenses },
-    { data: allExpenses },
-    { data: budgets },
-    { data: goals },
-  ] = await Promise.all([
-    admin
-      .from("users")
-      .select("id, couple_id, email, name, created_at")
-      .eq("couple_id", user.couple_id)
-      .order("created_at", { ascending: true }),
-    admin
-      .from("categories")
-      .select("id, couple_id, name, icon, is_default, created_at")
-      .eq("couple_id", user.couple_id)
-      .order("is_default", { ascending: false })
-      .order("name", { ascending: true }),
-    admin
-      .from("expenses")
-      .select(
-        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
-      )
-      .eq("couple_id", user.couple_id)
-      .gte("expense_date", currentMonthStart)
-      .lt("expense_date", getNextMonthEnd(selectedMonth))
-      .order("expense_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(200),
-    admin
-      .from("expenses")
-      .select(
-        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
-      )
-      .eq("couple_id", user.couple_id)
-      .gte("expense_date", multiMonthStart)
-      .lt("expense_date", multiMonthEnd)
-      .order("expense_date", { ascending: false })
-      .limit(500),
-    admin
-      .from("expenses")
-      .select(
-        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
-      )
-      .eq("couple_id", user.couple_id)
-      .gte("expense_date", prevMonthStart)
-      .lt("expense_date", prevMonthEnd)
-      .limit(200),
-    admin
-      .from("expenses")
-      .select(
-        "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
-      )
-      .eq("couple_id", user.couple_id)
-      .order("expense_date", { ascending: false })
-      .limit(500),
-    admin
-      .from("budgets")
-      .select("id, couple_id, category_id, month, amount")
-      .eq("couple_id", user.couple_id)
-      .eq("month", currentMonthStart),
-    admin
-      .from("savings_goals")
-      .select(
-        "id, couple_id, created_by, name, target_amount, current_amount, deadline, is_shared, icon, created_at",
-      )
-      .eq("couple_id", user.couple_id)
-      .order("created_at", { ascending: false })
-      .limit(4),
-  ]);
+  const [{ data: members }, { data: categories }, { data: multiMonthExpenses }, { data: budgets }, { data: goals }] =
+    await Promise.all([
+      admin
+        .from("users")
+        .select("id, couple_id, email, name, created_at")
+        .eq("couple_id", user.couple_id)
+        .order("created_at", { ascending: true }),
+      admin
+        .from("categories")
+        .select("id, couple_id, name, icon, is_default, created_at")
+        .eq("couple_id", user.couple_id)
+        .order("is_default", { ascending: false })
+        .order("name", { ascending: true }),
+      admin
+        .from("expenses")
+        .select(
+          "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+        )
+        .eq("couple_id", user.couple_id)
+        .gte("expense_date", multiMonthStart)
+        .lt("expense_date", multiMonthEnd)
+        .order("expense_date", { ascending: false })
+        .limit(300),
+      admin
+        .from("budgets")
+        .select("id, couple_id, category_id, month, amount")
+        .eq("couple_id", user.couple_id)
+        .eq("month", currentMonthStart),
+      admin
+        .from("savings_goals")
+        .select(
+          "id, couple_id, created_by, name, target_amount, current_amount, deadline, is_shared, icon, created_at",
+        )
+        .eq("couple_id", user.couple_id)
+        .order("created_at", { ascending: false })
+        .limit(4),
+    ]);
 
   const typedMembers = (members ?? []) as User[];
   const typedCategories = (categories ?? []) as Category[];
-  const typedMonthlyExpenses = (monthlyExpenses ?? []) as Expense[];
   const typedMultiMonthExpenses = (multiMonthExpenses ?? []) as Expense[];
-  const typedPrevMonthExpenses = (prevMonthExpenses ?? []) as Expense[];
-  const typedAllExpenses = (allExpenses ?? []) as Expense[];
+  const typedMonthlyExpenses = typedMultiMonthExpenses.filter((e) => {
+    const d = e.expense_date;
+    return d >= currentMonthStart && d < getNextMonthEnd(selectedMonth);
+  });
+  const typedPrevMonthExpenses = typedMultiMonthExpenses.filter((e) => {
+    const d = e.expense_date;
+    return d >= prevMonthStart && d < prevMonthEnd;
+  });
   const typedBudgets = (budgets ?? []) as Budget[];
   const typedGoals = (goals ?? []) as SavingsGoal[];
 
@@ -194,8 +167,8 @@ export default async function DashboardPage({
     typedMultiMonthExpenses,
     typedCategories,
   );
-  const streaksInfo = detectStreaks(typedAllExpenses);
-  const hasSharedExpense = typedAllExpenses.some(
+  const streaksInfo = detectStreaks(typedMultiMonthExpenses);
+  const hasSharedExpense = typedMultiMonthExpenses.some(
     (e) => e.split_type !== "personal",
   );
 
@@ -237,6 +210,9 @@ export default async function DashboardPage({
   const budgetRemaining =
     overallBudgetAmount === null ? null : overallBudgetAmount - myPaidThisMonth;
   const topCategory = summary.categorySummaries[0] ?? null;
+  const filteredCategorySummaries = categoryFilter
+    ? summary.categorySummaries.filter((c) => c.categoryId === categoryFilter)
+    : summary.categorySummaries;
   const averageGoalProgress = typedGoals.length
     ? Math.round(
         typedGoals.reduce((total, goal) => total + getGoalProgress(goal), 0) /
@@ -290,26 +266,17 @@ export default async function DashboardPage({
                 </span>
               </div>
             </div>
-            <div className="rounded-2xl border border-border bg-background/70 p-4">
-              <div className="text-sm text-muted-foreground">Workspace</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-foreground">
-                <span>
-                  {typedMembers.length} member
-                  {typedMembers.length === 1 ? "" : "s"}
-                </span>
-                {couple?.invite_code ? (
-                  <code className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-xs">
-                    {couple.invite_code}
-                  </code>
-                ) : null}
-              </div>
-            </div>
+            <WorkspaceDialog
+              members={typedMembers}
+              inviteCode={couple?.invite_code ?? null}
+              currentUserId={user.id}
+            />
           </div>
         </div>
       </section>
 
       {/* KPI cards */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-border/60 shadow-sm" size="sm">
           <CardHeader>
             <CardDescription>Overall spend</CardDescription>
@@ -360,7 +327,7 @@ export default async function DashboardPage({
       </section>
 
       {/* Spend map + Budget + Goals */}
-      <section className="grid gap-5 xl:grid-cols-[1.45fr_0.9fr]">
+      <section className="grid gap-5 lg:grid-cols-[1.45fr_0.9fr]">
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -369,41 +336,36 @@ export default async function DashboardPage({
                   Spend map
                 </CardTitle>
                 <CardDescription>
-                  Category totals for this month, including uncategorized
-                  spending. Click a category to see its history.
+                  {categoryFilter
+                    ? `Filtered view for "${categoryById.get(categoryFilter)?.name ?? "selected category"}" this month.`
+                    : "Category totals for this month, including uncategorized spending. Click a category to see its history."}
                 </CardDescription>
               </div>
               <Link
                 href="/expenses"
-                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                className="shrink-0 text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
                 Open expense details →
               </Link>
             </div>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {/* Category bar chart */}
-            <DashboardCharts data={summary.categorySummaries} />
-
-            {/* Category list with history dialog */}
-            {summary.categorySummaries.length > 0 && (
-              <div className="mt-4 divide-y divide-border/70 border-t border-border/70 pt-4">
-                {summary.categorySummaries.map((cat) => {
-                  const history = computeCategoryHistory(
-                    typedMultiMonthExpenses,
-                    cat.categoryId,
-                    multiMonths,
-                  );
-                  return (
-                    <CategoryHistoryDialog
-                      key={cat.categoryId ?? "__uncat__"}
-                      category={cat}
-                      history={history}
-                    />
-                  );
-                })}
-              </div>
-            )}
+          <CardContent className="space-y-4">
+            <CategoryFilter
+              categories={typedCategories}
+              selectedId={categoryFilter}
+            />
+            {/* Category bar chart + clickable list */}
+            <SpendMapSection
+              filteredCategorySummaries={filteredCategorySummaries}
+              typedMultiMonthExpenses={typedMultiMonthExpenses}
+              multiMonths={multiMonths}
+              typedMonthlyExpenses={typedMonthlyExpenses}
+              userById={userById}
+              currentUserId={user.id}
+              categoryFilter={categoryFilter}
+              categoryById={categoryById}
+              monthLabel={monthLabel}
+            />
           </CardContent>
         </Card>
 

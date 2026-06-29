@@ -18,64 +18,97 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { CategoryIcon } from "@/components/categories/category-icon";
-import type { CategorySummary } from "@/lib/finance";
-import { formatCurrency } from "@/lib/finance";
-
-type MonthlyHistory = {
-  month: string;
-  label: string;
-  amount: number;
-};
+import type { CategorySummary, MonthlyHistory } from "@/lib/finance";
+import { formatCurrency, getShareForExpense, formatShortDate } from "@/lib/finance";
+import type { Expense, User } from "@/lib/types";
 
 type Props = {
   category: CategorySummary;
   history: MonthlyHistory[];
+  expenses: Expense[];
+  users: Map<string, User>;
+  currentUserId: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function CategoryHistoryDialog({ category, history }: Props) {
-  const [open, setOpen] = useState(false);
+export function CategoryHistoryDialog({
+  category,
+  history,
+  expenses,
+  users,
+  currentUserId,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+}: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen ?? internalOpen;
+  const setOpen = externalOnOpenChange ?? setInternalOpen;
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="group flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-muted/50"
-      >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <CategoryIcon icon={null} fallback={category.name[0]} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-foreground">
-            {category.name}
+      {externalOpen === undefined && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="group flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-muted/50"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <CategoryIcon icon={null} fallback={category.name[0]} />
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <div className="min-w-0 shrink-0">
+              <div className="truncate text-sm font-medium text-foreground">
+                {category.name}
+              </div>
+            </div>
+            {/* Mini historical bar sparkline */}
+            {history.length > 0 && (
+              <div className="hidden min-w-0 flex-1 sm:flex items-end gap-px h-7 px-2">
+                {(() => {
+                  const maxAmount = Math.max(...history.map((h) => h.amount));
+                  return history.map((h) => {
+                    const pct =
+                      maxAmount > 0 ? (h.amount / maxAmount) * 100 : 0;
+                    return (
+                      <div
+                        key={h.month}
+                        className="flex-1 rounded-t-[1.5px] bg-primary/35 transition-all group-hover:bg-primary/50"
+                        style={{ height: `${Math.max(pct, 3)}%` }}
+                      />
+                    );
+                  });
+                })()}
+              </div>
+            )}
+          </div>
+          <span className="shrink-0 font-mono text-sm tabular-nums text-foreground">
             {formatCurrency(category.amount)}
-          </div>
-        </div>
-        <span className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-          View history →
-        </span>
-      </button>
+          </span>
+        </button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <CategoryIcon icon={null} fallback={category.name[0]} />
               {category.name}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs">
               Monthly spending history for {category.name.toLowerCase()}.
             </DialogDescription>
           </DialogHeader>
+
           {history.length > 0 ? (
-            <div className="h-56 w-full">
+            <div className="h-32 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={history}
-                  margin={{ top: 4, right: 8, left: -20, bottom: 4 }}
+                  margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
                 >
                   <CartesianGrid
                     vertical={false}
@@ -84,13 +117,13 @@ export function CategoryHistoryDialog({ category, history }: Props) {
                   />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
                     tickFormatter={(v) => `$${v}`}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -100,7 +133,9 @@ export function CategoryHistoryDialog({ category, history }: Props) {
                     contentStyle={{
                       background: "var(--background)",
                       border: "1px solid var(--border)",
-                      borderRadius: 12,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 12,
                       boxShadow:
                         "0 8px 24px color-mix(in oklch, var(--foreground) 10%, transparent)",
                     }}
@@ -110,16 +145,73 @@ export function CategoryHistoryDialog({ category, history }: Props) {
                   <Bar
                     dataKey="amount"
                     fill="var(--primary)"
-                    radius={[6, 6, 0, 0]}
-                    barSize={24}
+                    radius={[4, 4, 0, 0]}
+                    barSize={20}
                   />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-6 text-center text-sm text-muted-foreground">
               No history available for this category.
             </p>
+          )}
+
+          {expenses.length > 0 && (
+            <>
+              <Separator className="my-2" />
+              <div>
+                <h4 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  This month&apos;s expenses
+                </h4>
+                <div className="space-y-1.5">
+                  {expenses.map((expense) => {
+                    const payer = users.get(expense.user_id ?? "");
+                    const isMine = expense.user_id === currentUserId;
+                    const { payer: payerShare } = getShareForExpense(expense);
+
+                    return (
+                      <div
+                        key={expense.id}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-border/50 bg-background/50 px-2.5 py-2 text-xs"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <span className="shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">
+                            {formatShortDate(expense.expense_date)}
+                          </span>
+                          <span className="truncate text-foreground">
+                            {expense.description || "No description"}
+                          </span>
+                          <Badge
+                            variant={isMine ? "default" : "secondary"}
+                            className="shrink-0 text-[9px] font-normal leading-none px-1.5 py-0.5"
+                          >
+                            {payer?.name ?? "Unknown"}
+                          </Badge>
+                          {expense.split_type !== "personal" && (
+                            <span className="shrink-0 text-[9px] text-muted-foreground">
+                              {expense.split_type === "custom"
+                                ? `${Math.round((expense.custom_ratio ?? 0.5) * 100)}/${Math.round((1 - (expense.custom_ratio ?? 0.5)) * 100)}`
+                                : "50/50"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-0.5">
+                          <span className="font-mono font-medium tabular-nums text-foreground">
+                            {formatCurrency(expense.amount)}
+                          </span>
+                          {expense.split_type !== "personal" && (
+                            <span className="font-mono text-[9px] text-muted-foreground tabular-nums">
+                              your share: {formatCurrency(payerShare)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

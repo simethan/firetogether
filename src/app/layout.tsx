@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppNavigation } from "@/components/layout/app-navigation";
+import { PageTransition } from "@/components/layout/page-transition";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -42,7 +43,9 @@ export default function RootLayout({
       <body className="min-h-dvh flex flex-col bg-background text-foreground">
         <div className="flex flex-1 flex-row">
           <AppNavigation />
-          <main className="relative min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+          <main className="relative min-w-0 flex-1 pb-20 md:pb-0">
+            <PageTransition>{children}</PageTransition>
+          </main>
         </div>
         <Toaster position="top-center" richColors />
       </body>

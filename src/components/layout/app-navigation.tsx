@@ -21,6 +21,9 @@ const primaryLinks = [
   { href: "/expenses", label: "Expenses", icon: ReceiptText },
   { href: "/budgets", label: "Budgets", icon: Calculator },
   { href: "/goals", label: "Goals", icon: Goal },
+];
+
+const secondaryLinks = [
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/shortcut", label: "Shortcut", icon: Smartphone },
   { href: "/year-in-review", label: "Year in Review", icon: Calendar },
@@ -44,11 +47,6 @@ export function AppNavigation() {
   }
 
   const isAddExpenseActive = pathname === "/expenses/new";
-  const isLoggedIn = !(publicRoutes.has(pathname) || pathname.startsWith("/auth"));
-
-  if (!isLoggedIn) {
-    return null;
-  }
 
   return (
     <>
@@ -76,6 +74,35 @@ export function AppNavigation() {
         {/* Nav links */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
           {primaryLinks.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(pathname, item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground",
+                  active &&
+                    "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                {active && (
+                  <span className="absolute -left-3 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary animate-sidebar-active" />
+                )}
+                <Icon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                {item.label}
+              </Link>
+            );
+          })}
+
+          {/* Secondary nav group */}
+          <div className="my-2 border-t border-border/40" />
+          <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/60">
+            Settings
+          </p>
+          {secondaryLinks.map((item) => {
             const Icon = item.icon;
             const active = isActive(pathname, item.href);
 
@@ -122,7 +149,7 @@ export function AppNavigation() {
         <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-10 bg-linear-to-r from-transparent to-background/95" />
 
         <div className="flex gap-1 overflow-x-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 scrollbar-none">
-          {primaryLinks.map((item) => {
+          {[...primaryLinks, ...secondaryLinks].map((item) => {
             const Icon = item.icon;
             const active = isActive(pathname, item.href);
 

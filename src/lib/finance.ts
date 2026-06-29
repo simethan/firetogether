@@ -1,11 +1,11 @@
 import type { Budget, Category, Expense, SavingsGoal, User } from "@/lib/types";
 
-export type DashboardExpenseWithCategory = Expense & {
+type DashboardExpenseWithCategory = Expense & {
   categories?: Category | null;
   users?: User | null;
 };
 
-export type MemberBalance = {
+type MemberBalance = {
   userId: string;
   name: string;
   paid: number;
@@ -20,7 +20,7 @@ export type CategorySummary = {
   remaining: number | null;
 };
 
-export type DashboardSummary = {
+type DashboardSummary = {
   totalSpent: number;
   sharedSpent: number;
   personalSpent: number;
@@ -112,20 +112,6 @@ export function getLastNMonths(count: number, fromMonth?: string): string[] {
   return months;
 }
 
-export function getMonthRange(startMonth: string, endMonth: string): string[] {
-  const [sy, sm] = startMonth.split("-").map(Number);
-  const [ey, em] = endMonth.split("-").map(Number);
-  const months: string[] = [];
-  const start = sy * 12 + sm;
-  const end = ey * 12 + em;
-  for (let m = start; m <= end; m++) {
-    const y = Math.floor(m / 12);
-    const month = m % 12;
-    months.push(`${y}-${String(month === 0 ? 12 : month).padStart(2, "0")}`);
-  }
-  return months;
-}
-
 export function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -155,11 +141,11 @@ export function formatShortDate(value: string) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
-function roundCurrency(value: number) {
+export function roundCurrency(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function getShareForExpense(expense: Expense) {
+export function getShareForExpense(expense: Expense) {
   if (expense.split_type === "personal") {
     return { payer: expense.amount, partner: 0 };
   }

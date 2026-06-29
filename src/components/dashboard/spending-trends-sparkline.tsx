@@ -1,6 +1,6 @@
 "use client";
 
-import { MonthlyTrend } from "@/lib/finance";
+import type { MonthlyTrend } from "@/lib/finance";
 
 type Props = {
   trends: MonthlyTrend[];

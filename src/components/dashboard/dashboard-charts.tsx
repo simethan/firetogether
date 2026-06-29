@@ -24,9 +24,10 @@ const chartColors = [
 
 type Props = {
   data: CategorySummary[];
+  onCategoryClick?: (categoryId: string | null) => void;
 };
 
-export function DashboardCharts({ data }: Props) {
+export function DashboardCharts({ data, onCategoryClick }: Props) {
   const chartData = data
     .filter((item) => item.amount > 0)
     .slice(0, 6)
@@ -104,6 +105,8 @@ export function DashboardCharts({ data }: Props) {
                     ? chartColors[index % chartColors.length]
                     : "var(--muted-foreground)"
                 }
+                style={{ cursor: onCategoryClick ? "pointer" : "default" }}
+                onClick={() => onCategoryClick?.(entry.categoryId)}
               />
             ))}
           </Bar>

@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
-import { formatCurrency, getCurrentMonthValue } from "@/lib/finance";
+import { formatCurrency, formatMonthLabel, getCurrentMonthValue } from "@/lib/finance";
 import type { Budget, Category, Expense } from "@/lib/types";
 import {
   createBudgetAction,
@@ -34,13 +34,6 @@ function ErrorBanner({ searchParams }: { searchParams: { error?: string } }) {
       {decodeURIComponent(searchParams.error)}
     </div>
   );
-}
-
-function formatMonthLabel(monthValue: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${monthValue}-01T00:00:00`));
 }
 
 function getProgress(spent: number, budget: number) {

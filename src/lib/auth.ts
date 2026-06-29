@@ -11,21 +11,6 @@ export async function getAuthUserId() {
   return data.user?.id ?? null;
 }
 
-export async function getCurrentAppUser(authUserId: string) {
-  const admin = createServiceClient();
-  const { data, error } = await admin
-    .from("users")
-    .select("id, couple_id, email, name, created_at")
-    .eq("id", authUserId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as User | null;
-}
-
 export async function getCurrentCouple(coupleId: string) {
   const admin = createServiceClient();
   const { data, error } = await admin

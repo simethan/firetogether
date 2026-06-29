@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { CategoryIcon } from "@/components/categories/category-icon";
+import { CategoryFilter } from "@/components/expenses/category-filter";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -18,13 +19,10 @@ import {
   formatCurrency,
   getCurrentMonthValue,
   getMonthStartDate,
+  getShareForExpense as getExpenseShare,
+  roundCurrency,
 } from "@/lib/finance";
 import type { Category, Expense, User } from "@/lib/types";
-
-type ExpenseShare = {
-  payerShare: number;
-  partnerShare: number;
-};
 
 type MemberBreakdown = {
   user: User;
@@ -41,27 +39,6 @@ type SplitBreakdown = {
   description: string;
 };
 
-function roundCurrency(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-function getExpenseShare(expense: Expense): ExpenseShare {
-  const amount = Number(expense.amount);
-
-  if (expense.split_type === "personal") {
-    return { payerShare: amount, partnerShare: 0 };
-  }
-
-  if (expense.split_type === "custom") {
-    const payerRatio =
-      typeof expense.custom_ratio === "number" ? expense.custom_ratio : 0.5;
-    const payerShare = amount * payerRatio;
-    return { payerShare, partnerShare: amount - payerShare };
-  }
-
-  return { payerShare: amount / 2, partnerShare: amount / 2 };
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -74,7 +51,11 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, category: categoryParam } = await searchParams;
+  const categoryFilter =
+    typeof categoryParam === "string" && categoryParam.length > 0
+      ? categoryParam
+      : null;
   const currentPage = Math.max(1, parseInt(String(pageParam ?? "1"), 10) || 1);
   const pageSize = 20;
 
@@ -98,37 +79,42 @@ export default async function ExpensesPage({
   const currentMonth = getCurrentMonthValue();
   const currentMonthStart = getMonthStartDate(currentMonth);
 
+  const membersQuery = admin
+    .from("users")
+    .select("id, couple_id, email, name, created_at")
+    .eq("couple_id", currentUser.couple_id)
+    .order("created_at", { ascending: true });
+
+  const categoriesQuery = admin
+    .from("categories")
+    .select("id, couple_id, name, icon, is_default, created_at")
+    .eq("couple_id", currentUser.couple_id)
+    .order("is_default", { ascending: false })
+    .order("name", { ascending: true });
+
+  let expensesQuery = admin
+    .from("expenses")
+    .select(
+      "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+      { count: "exact" },
+    )
+    .eq("couple_id", currentUser.couple_id)
+    .gte("expense_date", currentMonthStart);
+
+  if (categoryFilter) {
+    expensesQuery = expensesQuery.eq("category_id", categoryFilter);
+  }
+
+  expensesQuery = expensesQuery
+    .order("expense_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+
   const [
     { data: members },
     { data: categories },
     { data: expenses, count: expensesCount },
-  ] = await Promise.all([
-      admin
-        .from("users")
-        .select("id, couple_id, email, name, created_at")
-        .eq("couple_id", currentUser.couple_id)
-        .order("created_at", { ascending: true }),
-      admin
-        .from("categories")
-        .select("id, couple_id, name, icon, is_default, created_at")
-        .eq("couple_id", currentUser.couple_id)
-        .order("is_default", { ascending: false })
-        .order("name", { ascending: true }),
-      admin
-        .from("expenses")
-        .select(
-          "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
-          { count: "exact" },
-        )
-        .eq("couple_id", currentUser.couple_id)
-        .gte("expense_date", currentMonthStart)
-        .order("expense_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .range(
-          (currentPage - 1) * pageSize,
-          currentPage * pageSize - 1,
-        ),
-    ]);
+  ] = await Promise.all([membersQuery, categoriesQuery, expensesQuery]);
 
   const typedMembers = (members ?? []) as User[];
   const typedCategories = (categories ?? []) as Category[];
@@ -209,7 +195,7 @@ export default async function ExpensesPage({
       (member) => member.id !== expense.user_id,
     );
     const other = otherMember ? memberBreakdowns.get(otherMember.id) : null;
-    const { payerShare, partnerShare } = getExpenseShare(expense);
+    const { payer: payerShare, partner: partnerShare } = getExpenseShare(expense);
     const split = splitBreakdowns.get(expense.split_type);
     const category = expense.category_id
       ? categoryById.get(expense.category_id)
@@ -365,7 +351,7 @@ export default async function ExpensesPage({
         </Card>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <Card className="border-border/60 shadow-lg shadow-orange-500/5">
           <CardHeader>
             <CardTitle>By person</CardTitle>
@@ -466,7 +452,7 @@ export default async function ExpensesPage({
               Quickly separate personal tracking from shared obligations.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
+          <CardContent className="grid gap-4 sm:grid-cols-3">
             {Array.from(splitBreakdowns.values()).map((split) => {
               const percent =
                 totalSpent > 0
@@ -500,15 +486,25 @@ export default async function ExpensesPage({
 
       <Card className="border-border/60 shadow-lg shadow-orange-500/5">
         <CardHeader>
-          <CardTitle>Category detail</CardTitle>
-          <CardDescription>
-            Category totals with your assigned share separated from full spend.
-          </CardDescription>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Category detail</CardTitle>
+              <CardDescription>
+                {categoryFilter
+                  ? `Filtered to show only "${typedCategories.find((c) => c.id === categoryFilter)?.name ?? "selected"}" expenses.`
+                  : "Category totals with your assigned share separated from full spend."}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <CategoryFilter
+            categories={typedCategories}
+            selectedId={categoryFilter}
+          />
           {categoryRows.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-180 text-sm">
+              <table className="w-full min-w-[680px] text-sm">
                 <thead className="text-left text-muted-foreground">
                   <tr className="border-b border-border">
                     <th className="py-3 pr-4 font-medium">Category</th>
@@ -527,7 +523,7 @@ export default async function ExpensesPage({
                     >
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2 font-medium text-foreground">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                             <CategoryIcon icon={category.icon} fallback="💸" />
                           </span>
                           {category.name}
@@ -555,16 +551,32 @@ export default async function ExpensesPage({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <span className="text-4xl">🧾</span>
-              <p className="text-sm text-muted-foreground">
-                No expenses recorded this month yet.
-              </p>
-              <Link
-                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                href="/expenses/new"
-              >
-                Add your first expense →
-              </Link>
+              {categoryFilter ? (
+                <>
+                  <span className="text-4xl">🔍</span>
+                  <p className="text-sm text-muted-foreground">
+                    No expenses in{" "}
+                    <span className="font-medium text-foreground">
+                      {typedCategories.find((c) => c.id === categoryFilter)
+                        ?.name ?? "this category"}
+                    </span>{" "}
+                    this month.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="text-4xl">🧾</span>
+                  <p className="text-sm text-muted-foreground">
+                    No expenses recorded this month yet.
+                  </p>
+                  <Link
+                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                    href="/expenses/new"
+                  >
+                    Add your first expense →
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </CardContent>
@@ -574,7 +586,9 @@ export default async function ExpensesPage({
         <CardHeader>
           <CardTitle>Transaction detail</CardTitle>
           <CardDescription>
-            Each expense with payer, split type, your share, and partner share.
+            {categoryFilter
+              ? `Filtered to show only "${typedCategories.find((c) => c.id === categoryFilter)?.name ?? "selected"}" expenses.`
+              : "Each expense with payer, split type, your share, and partner share."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -587,7 +601,7 @@ export default async function ExpensesPage({
                 const payer = expense.user_id
                   ? userById.get(expense.user_id)
                   : null;
-                const { payerShare, partnerShare } = getExpenseShare(expense);
+                const { payer: payerShare, partner: partnerShare } = getExpenseShare(expense);
                 const myShare =
                   expense.user_id === currentUser.id
                     ? payerShare
@@ -599,19 +613,21 @@ export default async function ExpensesPage({
 
                 return (
                   <div key={expense.id}>
-                    <div className="grid gap-3 rounded-2xl p-3 transition-colors hover:bg-muted/40 md:grid-cols-[1fr_auto_auto] md:items-center">
-                      <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex flex-col gap-3 rounded-2xl p-3 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                           <CategoryIcon icon={category?.icon} fallback="💸" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="truncate font-medium text-foreground">
                             {expense.description ?? category?.name ?? "Expense"}
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             <span>{formatDate(expense.expense_date)}</span>
                             <span className="opacity-40">·</span>
-                            <span>{category?.name ?? "Uncategorized"}</span>
+                            <span className="truncate">
+                              {category?.name ?? "Uncategorized"}
+                            </span>
                             <Badge
                               variant="outline"
                               className="h-5 border-border/60 px-1.5 text-[10px] font-normal"
@@ -635,25 +651,25 @@ export default async function ExpensesPage({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 text-right text-sm md:min-w-85">
-                        <div>
-                          <div className="text-xs text-muted-foreground">
+                      <div className="grid grid-cols-3 gap-2 sm:min-w-72 sm:text-right">
+                        <div className="sm:text-right">
+                          <div className="text-xs text-muted-foreground sm:hidden">
                             Amount
                           </div>
                           <div className="font-semibold tabular-nums text-foreground">
                             {formatCurrency(Number(expense.amount))}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">
+                        <div className="sm:text-right">
+                          <div className="text-xs text-muted-foreground sm:hidden">
                             My share
                           </div>
                           <div className="font-semibold tabular-nums text-foreground">
                             {formatCurrency(roundCurrency(myShare))}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">
+                        <div className="sm:text-right">
+                          <div className="text-xs text-muted-foreground sm:hidden">
                             {partner?.name ?? "Partner"}
                           </div>
                           <div className="font-semibold tabular-nums text-foreground">
@@ -664,7 +680,7 @@ export default async function ExpensesPage({
 
                       <Link
                         href={`/expenses/${expense.id}/edit`}
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground self-start sm:self-center"
                         aria-label="Edit expense"
                       >
                         ✏️
@@ -676,20 +692,34 @@ export default async function ExpensesPage({
               })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No transaction details to show yet.
-            </p>
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              {categoryFilter ? (
+                <>
+                  <span className="text-4xl">🔍</span>
+                  <p className="text-sm text-muted-foreground">
+                    No transactions found for this filter.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No transaction details to show yet.
+                </p>
+              )}
+            </div>
           )}
 
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
                 Page {currentPage} of {totalPages}
+                {categoryFilter
+                  ? ` (filtered)`
+                  : ""}
               </p>
               <div className="flex gap-2">
                 {currentPage > 1 ? (
                   <Link
-                    href={`/expenses?page=${currentPage - 1}`}
+                    href={`/expenses?page=${currentPage - 1}${categoryFilter ? `&category=${categoryFilter}` : ""}`}
                     className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                   >
                     ← Previous
@@ -701,7 +731,7 @@ export default async function ExpensesPage({
                 )}
                 {currentPage < totalPages ? (
                   <Link
-                    href={`/expenses?page=${currentPage + 1}`}
+                    href={`/expenses?page=${currentPage + 1}${categoryFilter ? `&category=${categoryFilter}` : ""}`}
                     className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                   >
                     Next →

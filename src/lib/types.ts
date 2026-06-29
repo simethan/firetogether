@@ -69,7 +69,7 @@ export type SavingsGoal = {
   created_at: string;
 };
 
-export type SplitType = "personal" | "shared" | "custom";
+type SplitType = "personal" | "shared" | "custom";
 
 export type ShortcutExpensePayload = {
   amount: number;
