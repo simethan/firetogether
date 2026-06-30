@@ -12,9 +12,10 @@ import {
 
 type Props = {
   currentMonth: string;
+  basePath?: string;
 };
 
-export function MonthSelector({ currentMonth }: Props) {
+export function MonthSelector({ currentMonth, basePath = "/dashboard" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedMonth =
@@ -27,13 +28,14 @@ export function MonthSelector({ currentMonth }: Props) {
 
   function navigate(month: string) {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("page");
     if (month === currentMonth) {
       params.delete("month");
     } else {
       params.set("month", month);
     }
     const query = params.toString();
-    router.push(query ? `/dashboard?${query}` : "/dashboard");
+    router.push(query ? `${basePath}?${query}` : basePath);
   }
 
   return (

@@ -558,3 +558,64 @@ export function computeCategoryHistory(
     amount: roundCurrency(byMonth.get(month) ?? 0),
   }));
 }
+
+/** Escape a CSV field — wrap in quotes if it contains commas, quotes, or newlines. */
+function csvEscape(value: string | number | null | undefined): string {
+  const str = value == null ? "" : String(value);
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/** Generate a CSV string from expense rows for the given month. */
+export function expensesToCsv(
+  expenses: Array<{
+    id: string;
+    expense_date: string;
+    description: string | null;
+    category_name: string | null;
+    amount: number;
+    split_type: string;
+    payer_name: string | null;
+    my_share: number;
+    partner_share: number;
+    partner_name: string | null;
+  }>,
+): string {
+  const header = ["Date", "Description", "Category", "Amount", "Split Type", "Paid By", "My Share", "Partner Share", "Partner"];
+  const rows = expenses.map((e) => [
+    e.expense_date,
+    e.description ?? "",
+    e.category_name ?? "Uncategorized",
+    formatCurrency(e.amount),
+    e.split_type,
+    e.payer_name ?? "Unknown",
+    formatCurrency(e.my_share),
+    formatCurrency(e.partner_share),
+    e.partner_name ?? "",
+  ]);
+
+  return [header, ...rows]
+    .map((row) => row.map(csvEscape).join(","))
+    .join("\n");
+}
+
+/** Generate a plain-text categories summary string. */
+export function categoriesToText(
+  rows: Array<{
+    name: string;
+    total: number;
+    myShare: number;
+    shared: number;
+    personal: number;
+    count: number;
+  }>,
+): string {
+  const header = `${"Category".padEnd(20)} ${"Total".padEnd(14)} ${"My Share".padEnd(14)} ${"Shared".padEnd(14)} ${"Personal".padEnd(14)} Entries`;
+  const sep = "─".repeat(header.length);
+  const lines = rows.map((r) =>
+    `${r.name.padEnd(20)} ${formatCurrency(r.total).padEnd(14)} ${formatCurrency(r.myShare).padEnd(14)} ${formatCurrency(r.shared).padEnd(14)} ${formatCurrency(r.personal).padEnd(14)} ${r.count}`,
+  );
+  return [header, sep, ...lines].join("\n");
+}

@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryFilter } from "@/components/expenses/category-filter";
+import { ExportButtons } from "@/components/expenses/export-buttons";
+import { MonthSelector } from "@/components/dashboard/month-selector";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -18,8 +20,11 @@ import { getAuthUserId } from "@/lib/auth";
 import {
   formatCurrency,
   getCurrentMonthValue,
+  getMonthOffset,
   getMonthStartDate,
+  getNextMonthEnd,
   getShareForExpense as getExpenseShare,
+  formatMonthLabel,
   roundCurrency,
 } from "@/lib/finance";
 import type { Category, Expense, User } from "@/lib/types";
@@ -51,7 +56,12 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { page: pageParam, category: categoryParam } = await searchParams;
+  const { page: pageParam, category: categoryParam, month: monthParam } = await searchParams;
+  const rawMonth = typeof monthParam === "string" ? monthParam : null;
+  const selectedMonth =
+    rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue()
+      ? rawMonth
+      : getCurrentMonthValue();
   const categoryFilter =
     typeof categoryParam === "string" && categoryParam.length > 0
       ? categoryParam
@@ -77,7 +87,9 @@ export default async function ExpensesPage({
   }
 
   const currentMonth = getCurrentMonthValue();
-  const currentMonthStart = getMonthStartDate(currentMonth);
+  const monthStart = getMonthStartDate(selectedMonth);
+  const monthEnd = getNextMonthEnd(selectedMonth);
+  const monthLabel = formatMonthLabel(selectedMonth);
 
   const membersQuery = admin
     .from("users")
@@ -99,7 +111,8 @@ export default async function ExpensesPage({
       { count: "exact" },
     )
     .eq("couple_id", currentUser.couple_id)
-    .gte("expense_date", currentMonthStart);
+    .gte("expense_date", monthStart)
+    .lt("expense_date", monthEnd);
 
   if (categoryFilter) {
     expensesQuery = expensesQuery.eq("category_id", categoryFilter);
@@ -116,9 +129,26 @@ export default async function ExpensesPage({
     { data: expenses, count: expensesCount },
   ] = await Promise.all([membersQuery, categoriesQuery, expensesQuery]);
 
+  // Fetch ALL expenses for this month — no pagination — for summary cards & export
+  let allMonthQuery = admin
+    .from("expenses")
+    .select(
+      "id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at",
+    )
+    .eq("couple_id", currentUser.couple_id)
+    .gte("expense_date", monthStart)
+    .lt("expense_date", monthEnd);
+
+  if (categoryFilter) {
+    allMonthQuery = allMonthQuery.eq("category_id", categoryFilter);
+  }
+
+  const { data: allMonthExpenses } = await allMonthQuery.order("expense_date", { ascending: false });
+
   const typedMembers = (members ?? []) as User[];
   const typedCategories = (categories ?? []) as Category[];
   const typedExpenses = (expenses ?? []) as Expense[];
+  const typedAllMonthExpenses = (allMonthExpenses ?? []) as Expense[];
   const totalExpenseCount = expensesCount ?? 0;
   const totalPages = Math.ceil(totalExpenseCount / pageSize);
   const categoryById = new Map(
@@ -186,7 +216,7 @@ export default async function ExpensesPage({
     }
   >();
 
-  for (const expense of typedExpenses) {
+  for (const expense of typedAllMonthExpenses) {
     const amount = Number(expense.amount);
     const payer = expense.user_id
       ? memberBreakdowns.get(expense.user_id)
@@ -248,14 +278,14 @@ export default async function ExpensesPage({
     categoryTotals.set(categoryKey, categoryTotal);
   }
 
-  const totalSpent = typedExpenses.reduce(
+  const totalSpent = typedAllMonthExpenses.reduce(
     (total, expense) => total + Number(expense.amount),
     0,
   );
-  const myPaid = typedExpenses
+  const myPaid = typedAllMonthExpenses
     .filter((expense) => expense.user_id === currentUser.id)
     .reduce((total, expense) => total + Number(expense.amount), 0);
-  const sharedTotal = typedExpenses
+  const sharedTotal = typedAllMonthExpenses
     .filter((expense) => expense.split_type !== "personal")
     .reduce((total, expense) => total + Number(expense.amount), 0);
   const myBreakdown = memberBreakdowns.get(currentUser.id);
@@ -264,24 +294,35 @@ export default async function ExpensesPage({
     (left, right) => right.total - left.total,
   );
 
+  function pageHref(page: number) {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    if (categoryFilter) params.set("category", categoryFilter);
+    if (selectedMonth !== getCurrentMonthValue()) params.set("month", selectedMonth);
+    return `/expenses?${params.toString()}`;
+  }
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-linear-to-br from-card via-card to-primary/5 p-6 sm:p-8">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
-            <Badge
-              variant="secondary"
-              className="gap-1.5 border-primary/20 bg-primary/10 text-primary"
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
-              Expenses
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge
+                variant="secondary"
+                className="gap-1.5 border-primary/20 bg-primary/10 text-primary"
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                Expenses
+              </Badge>
+              <MonthSelector currentMonth={currentMonth} basePath="/expenses" />
+            </div>
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Granular expense view
             </h1>
             <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
               See what you paid, what you&apos;re responsible for, and how
-              personal, shared, and custom splits compare for {currentMonth}.
+              personal, shared, and custom splits compare for {monthLabel}.
             </p>
           </div>
 
@@ -583,12 +624,49 @@ export default async function ExpensesPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Transaction detail</CardTitle>
-          <CardDescription>
-            {categoryFilter
-              ? `Filtered to show only "${typedCategories.find((c) => c.id === categoryFilter)?.name ?? "selected"}" expenses.`
-              : "Each expense with payer, split type, your share, and partner share."}
-          </CardDescription>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Transaction detail</CardTitle>
+              <CardDescription>
+                {categoryFilter
+                  ? `Filtered to show only "${typedCategories.find((c) => c.id === categoryFilter)?.name ?? "selected"}" expenses.`
+                  : "Each expense with payer, split type, your share, and partner share."}
+              </CardDescription>
+            </div>
+            <ExportButtons
+              expenses={typedAllMonthExpenses.map((e) => {
+                const category = e.category_id ? categoryById.get(e.category_id) : null;
+                const payer = e.user_id ? userById.get(e.user_id) : null;
+                const { payer: payerShare, partner: partnerShare } = getExpenseShare(e);
+                const myShare = e.user_id === currentUser.id ? payerShare : partnerShare;
+                const otherShare = e.user_id === currentUser.id ? partnerShare : payerShare;
+                const otherPayer = partner?.id
+                  ? userById.get(partner.id)
+                  : null;
+                return {
+                  id: e.id,
+                  expense_date: e.expense_date,
+                  description: e.description,
+                  category_name: category?.name ?? null,
+                  amount: Number(e.amount),
+                  split_type: e.split_type,
+                  payer_name: payer?.name ?? null,
+                  my_share: myShare,
+                  partner_share: otherShare,
+                  partner_name: otherPayer?.name ?? null,
+                };
+              })}
+              categories={categoryRows.map((r) => ({
+                name: r.name,
+                total: r.total,
+                myShare: r.myShare,
+                shared: r.shared,
+                personal: r.personal,
+                count: r.count,
+              }))}
+              month={selectedMonth}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {typedExpenses.length > 0 ? (
@@ -718,7 +796,7 @@ export default async function ExpensesPage({
               <div className="flex gap-2">
                 {currentPage > 1 ? (
                   <Link
-                    href={`/expenses?page=${currentPage - 1}${categoryFilter ? `&category=${categoryFilter}` : ""}`}
+                    href={pageHref(currentPage - 1)}
                     className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                   >
                     ← Previous
@@ -730,7 +808,7 @@ export default async function ExpensesPage({
                 )}
                 {currentPage < totalPages ? (
                   <Link
-                    href={`/expenses?page=${currentPage + 1}${categoryFilter ? `&category=${categoryFilter}` : ""}`}
+                    href={pageHref(currentPage + 1)}
                     className="inline-flex h-9 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                   >
                     Next →
