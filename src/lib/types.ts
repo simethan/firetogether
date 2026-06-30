@@ -47,6 +47,7 @@ export type Budget = {
   month: string;
   amount: number;
   funded_amount: number;
+  is_shared: boolean;
   // Joined
   categories?: Category;
 };

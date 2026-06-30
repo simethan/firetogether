@@ -635,6 +635,7 @@ export type EnvelopeStatus = {
   categoryId: string | null;
   categoryName: string;
   categoryIcon: string | null;
+  isShared: boolean;
   target: number;
   funded: number;
   spent: number;
@@ -668,21 +669,44 @@ export function computeEnvelopeStatuses(
 ): EnvelopeStatus[] {
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
-  // Sum spent per category for the month
-  const spentByCategory = new Map<string | null, number>();
-  let totalSpent = 0;
+  // Build two spending maps:
+  //   gross — full expense amount (for shared envelopes)
+  //   perUser — per-user share after splits (for individual envelopes)
+  const grossByCategory = new Map<string | null, number>();
+  const userByCategory = new Map<string | null, number>();
+  let grossTotal = 0;
+  let userTotal = 0;
+
   for (const expense of expenses) {
     const key = expense.category_id ?? null;
-    const amount = userId ? getUserShareForExpense(expense, userId) : Number(expense.amount);
-    spentByCategory.set(key, (spentByCategory.get(key) ?? 0) + amount);
-    totalSpent += amount;
+    const fullAmount = Number(expense.amount);
+    const shareAmount = userId
+      ? getUserShareForExpense(expense, userId)
+      : fullAmount;
+
+    grossByCategory.set(key, (grossByCategory.get(key) ?? 0) + fullAmount);
+    grossTotal += fullAmount;
+
+    userByCategory.set(key, (userByCategory.get(key) ?? 0) + shareAmount);
+    userTotal += shareAmount;
   }
 
   return budgets.map((budget) => {
-    const category = budget.category_id ? categoryById.get(budget.category_id) : null;
-    // Overall envelope (category_id = null) tracks all spending.
-    // Per-category envelopes track only their own category.
-    const spent = budget.category_id === null ? totalSpent : (spentByCategory.get(budget.category_id) ?? 0);
+    const category = budget.category_id
+      ? categoryById.get(budget.category_id)
+      : null;
+
+    // Shared envelopes track the full amount; individual envelopes track the user's share.
+    const isEnvShared = budget.is_shared !== false;
+    const spent =
+      budget.category_id === null
+        ? isEnvShared
+          ? grossTotal
+          : userTotal
+        : isEnvShared
+          ? grossByCategory.get(budget.category_id) ?? 0
+          : userByCategory.get(budget.category_id) ?? 0;
+
     const funded = Number(budget.funded_amount) || 0;
     const target = Number(budget.amount);
 
@@ -691,6 +715,7 @@ export function computeEnvelopeStatuses(
       categoryId: budget.category_id ?? null,
       categoryName: category?.name ?? "Overall",
       categoryIcon: category?.icon ?? null,
+      isShared: isEnvShared,
       target,
       funded,
       spent: roundCurrency(spent),

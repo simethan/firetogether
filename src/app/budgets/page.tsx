@@ -101,7 +101,7 @@ export default async function BudgetsPage({
         .order("name", { ascending: true }),
       admin
         .from("budgets")
-        .select("id, couple_id, category_id, month, amount, funded_amount")
+        .select("id, couple_id, category_id, month, amount, funded_amount, is_shared")
         .eq("couple_id", currentUser.couple_id)
         .eq("month", currentMonthStart)
         .order("amount", { ascending: false }),
@@ -208,6 +208,21 @@ export default async function BudgetsPage({
                     ))}
                   </select>
                 </div>
+                <fieldset className="space-y-2">
+                  <Label>Tracking</Label>
+                  <div className="flex gap-3">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                      <input type="radio" name="is_shared" value="true" defaultChecked className="accent-primary" />
+                      <span className="font-medium">Shared</span>
+                      <span className="text-muted-foreground">tracks couple-wide spending</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                      <input type="radio" name="is_shared" value="false" className="accent-primary" />
+                      <span className="font-medium">Individual</span>
+                      <span className="text-muted-foreground">tracks your share only</span>
+                    </label>
+                  </div>
+                </fieldset>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="amount">Target amount</Label>
@@ -357,6 +372,11 @@ export default async function BudgetsPage({
                                   <CategoryIcon icon={envelope.categoryIcon} />
                                 </span>
                                 <span className="truncate">{envelope.categoryName}</span>
+                                {envelope.isShared ? (
+                                  <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">Shared</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">Individual</Badge>
+                                )}
                               </div>
                               <div className="mt-1 text-sm text-muted-foreground">
                                 {formatCurrency(envelope.spent)} spent of {formatCurrency(envelope.funded)} funded

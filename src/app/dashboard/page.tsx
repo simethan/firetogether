@@ -14,10 +14,10 @@ import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryFilter } from "@/components/expenses/category-filter";
 import { CoupleBalanceTimeline } from "@/components/dashboard/couple-balance-timeline";
 import { SpendMapSection } from "@/components/dashboard/spend-map-section";
-import { ExpenseStreaks } from "@/components/dashboard/expense-streaks";
+import { SpendingInsights } from "@/components/dashboard/spending-insights";
 import { MonthSelector } from "@/components/dashboard/month-selector";
 import { RecurringExpenses } from "@/components/dashboard/recurring-expenses";
-import { SpendingInsights } from "@/components/dashboard/spending-insights";
+import { buildScheduledDisplay } from "@/components/dashboard/recurring-expenses";
 import { SpendingTrendsSparkline } from "@/components/dashboard/spending-trends-sparkline";
 import { WorkspaceDialog } from "@/components/dashboard/workspace-dialog";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -30,7 +30,6 @@ import {
   computeReadyToAssign,
   computeTotalIncome,
   detectRecurringExpenses,
-  detectStreaks,
   formatCurrency,
   formatMonthLabel,
   formatShortDate,
@@ -42,7 +41,7 @@ import {
   getMonthStartDate,
   getNextMonthEnd,
 } from "@/lib/finance";
-import type { Budget, Category, Expense, Income, SavingsGoal, User } from "@/lib/types";
+import type { Budget, Category, Expense, Income, SavingsGoal, ScheduledTransaction, User } from "@/lib/types";
 
 export default async function DashboardPage({
   searchParams,
@@ -92,7 +91,7 @@ export default async function DashboardPage({
   const prevMonthStart = getMonthStartDate(prevMonth);
   const prevMonthEnd = getMonthStartDate(selectedMonth);
 
-  const [{ data: members }, { data: categories }, { data: multiMonthExpenses }, { data: budgets }, { data: goals }, { data: income }] =
+  const [{ data: members }, { data: categories }, { data: multiMonthExpenses }, { data: budgets }, { data: goals }, { data: income }, { data: scheduled }] =
     await Promise.all([
       admin
         .from("users")
@@ -117,7 +116,7 @@ export default async function DashboardPage({
         .limit(300),
       admin
         .from("budgets")
-        .select("id, couple_id, category_id, month, amount, funded_amount")
+        .select("id, couple_id, category_id, month, amount, funded_amount, is_shared")
         .eq("couple_id", user.couple_id)
         .eq("month", currentMonthStart),
       admin
@@ -135,6 +134,13 @@ export default async function DashboardPage({
         .gte("income_date", currentMonthStart)
         .lt("income_date", getNextMonthEnd(selectedMonth))
         .order("income_date", { ascending: false }),
+      admin
+        .from("scheduled_transactions")
+        .select(
+          "id, couple_id, user_id, category_id, payee_id, amount, description, split_type, custom_ratio, frequency, frequency_interval, next_date, end_date, is_active, created_at",
+        )
+        .eq("couple_id", user.couple_id)
+        .order("next_date", { ascending: true }),
     ]);
 
   const typedMembers = (members ?? []) as User[];
@@ -151,6 +157,7 @@ export default async function DashboardPage({
   const typedBudgets = (budgets ?? []) as Budget[];
   const typedGoals = (goals ?? []) as SavingsGoal[];
   const typedIncome = (income ?? []) as Income[];
+  const typedScheduled = (scheduled ?? []) as ScheduledTransaction[];
 
   const totalIncome = computeTotalIncome(typedIncome);
   const totalFunded = typedBudgets.reduce(
@@ -188,10 +195,7 @@ export default async function DashboardPage({
     typedMultiMonthExpenses,
     typedCategories,
   );
-  const streaksInfo = detectStreaks(typedMultiMonthExpenses);
-  const hasSharedExpense = typedMultiMonthExpenses.some(
-    (e) => e.split_type !== "personal",
-  );
+  const scheduledDisplays = buildScheduledDisplay(typedScheduled, categoryById);
 
   // Insights from current vs previous month
   const currentWithMeta = typedMonthlyExpenses.map((expense) => ({
@@ -439,7 +443,14 @@ export default async function DashboardPage({
                         : 0;
                       return (
                         <div key={env.budgetId} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="truncate text-foreground">{env.categoryName}</span>
+                          <span className="flex items-center gap-1.5 truncate text-foreground">
+                            {env.categoryName}
+                            {env.isShared ? (
+                              <Badge variant="outline" className="text-[9px] font-normal text-muted-foreground px-1 py-0 leading-3">S</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] font-normal text-muted-foreground px-1 py-0 leading-3">I</Badge>
+                            )}
+                          </span>
                           <span className="font-mono tabular-nums text-muted-foreground">
                             {formatCurrency(env.spent)} / {formatCurrency(env.funded)}
                             {pct > 0 ? ` (${pct}%)` : ""}
@@ -552,8 +563,8 @@ export default async function DashboardPage({
         </Card>
       </section>
 
-      {/* Insights + Streaks + Recurring */}
-      <section className="grid gap-5 lg:grid-cols-3">
+      {/* Insights + Recurring */}
+      <section className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
@@ -571,24 +582,6 @@ export default async function DashboardPage({
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold">
-              Expense streaks
-            </CardTitle>
-            <CardDescription>
-              Your logging consistency and milestones.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ExpenseStreaks
-              streaks={streaksInfo}
-              totalExpenses={streaksInfo.totalExpenses}
-              hasSharedExpense={hasSharedExpense}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">
               Recurring
             </CardTitle>
             <CardDescription>
@@ -596,7 +589,7 @@ export default async function DashboardPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RecurringExpenses recurring={recurring} />
+            <RecurringExpenses recurring={recurring} scheduled={scheduledDisplays} />
           </CardContent>
         </Card>
       </section>

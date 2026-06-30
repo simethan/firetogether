@@ -59,6 +59,7 @@ export async function createBudgetAction(formData: FormData): Promise<void> {
   const amount = parseAmount(formData.get("amount"));
   const month = parseMonth(formData.get("month"));
   const categoryId = parseString(formData.get("category_id"));
+  const isShared = formData.get("is_shared") === "true";
 
   if (!amount || amount <= 0) {
     redirect("/budgets?error=Enter%20a%20valid%20budget%20amount.");
@@ -89,6 +90,7 @@ export async function createBudgetAction(formData: FormData): Promise<void> {
         category_id: categoryId,
         month,
         amount,
+        is_shared: isShared,
       },
       { onConflict: "couple_id,category_id,month" },
     );
@@ -108,7 +110,7 @@ export async function createBudgetAction(formData: FormData): Promise<void> {
     if (existing) {
       const { error } = await admin
         .from("budgets")
-        .update({ amount })
+        .update({ amount, is_shared: isShared })
         .eq("id", existing.id);
 
       if (error) {
@@ -120,6 +122,7 @@ export async function createBudgetAction(formData: FormData): Promise<void> {
         category_id: null,
         month,
         amount,
+        is_shared: isShared,
       });
 
       if (error) {
