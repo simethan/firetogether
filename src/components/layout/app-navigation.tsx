@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import {
   Calculator,
   Calendar,
+  CalendarClock,
   Goal,
   Home,
   PlusCircle,
   ReceiptText,
   Smartphone,
   Tags,
+  Wallet,
 } from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -19,12 +21,14 @@ import { cn } from "@/lib/utils";
 const primaryLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/expenses", label: "Expenses", icon: ReceiptText },
+  { href: "/income", label: "Income", icon: Wallet },
   { href: "/budgets", label: "Budgets", icon: Calculator },
   { href: "/goals", label: "Goals", icon: Goal },
 ];
 
 const secondaryLinks = [
   { href: "/categories", label: "Categories", icon: Tags },
+  { href: "/scheduled", label: "Scheduled", icon: CalendarClock },
   { href: "/shortcut", label: "Shortcut", icon: Smartphone },
   { href: "/year-in-review", label: "Year in Review", icon: Calendar },
 ];

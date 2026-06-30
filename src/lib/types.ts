@@ -27,6 +27,7 @@ export type Expense = {
   couple_id: string;
   user_id: string | null;
   category_id: string | null;
+  payee_id: string | null;
   amount: number;
   description: string | null;
   expense_date: string;
@@ -36,6 +37,7 @@ export type Expense = {
   // Joined
   categories?: Category;
   users?: User;
+  payees?: Payee;
 };
 
 export type Budget = {
@@ -44,8 +46,51 @@ export type Budget = {
   category_id: string | null;
   month: string;
   amount: number;
+  funded_amount: number;
   // Joined
   categories?: Category;
+};
+
+export type Income = {
+  id: string;
+  couple_id: string;
+  user_id: string | null;
+  amount: number;
+  source: string;
+  income_date: string;
+  created_at: string;
+  // Joined
+  users?: User;
+};
+
+export type Payee = {
+  id: string;
+  couple_id: string;
+  name: string;
+  icon: string | null;
+  created_at: string;
+};
+
+export type ScheduledTransaction = {
+  id: string;
+  couple_id: string;
+  user_id: string | null;
+  category_id: string | null;
+  payee_id: string | null;
+  amount: number;
+  description: string | null;
+  split_type: "personal" | "shared" | "custom";
+  custom_ratio: number | null;
+  frequency: "weekly" | "monthly" | "yearly";
+  frequency_interval: number;
+  next_date: string;
+  end_date: string | null;
+  is_active: boolean;
+  created_at: string;
+  // Joined
+  categories?: Category;
+  payees?: Payee;
+  users?: User;
 };
 
 export type ExpenseFormState = {

@@ -1,4 +1,4 @@
-import type { Budget, Category, Expense, SavingsGoal, User } from "@/lib/types";
+import type { Budget, Category, Expense, Income, SavingsGoal, User } from "@/lib/types";
 
 type DashboardExpenseWithCategory = Expense & {
   categories?: Category | null;
@@ -159,6 +159,14 @@ export function getShareForExpense(expense: Expense) {
   }
 
   return { payer: expense.amount / 2, partner: expense.amount / 2 };
+}
+
+/** How much a specific user is responsible for on this expense, after splits. */
+export function getUserShareForExpense(expense: Expense, userId: string): number {
+  const { payer, partner } = getShareForExpense(expense);
+  // If this user paid, their share is the payer share.
+  // If someone else paid, their share is the partner share.
+  return expense.user_id === userId ? payer : partner;
 }
 
 export function calculateDashboardSummary({
@@ -618,4 +626,81 @@ export function categoriesToText(
     `${r.name.padEnd(20)} ${formatCurrency(r.total).padEnd(14)} ${formatCurrency(r.myShare).padEnd(14)} ${formatCurrency(r.shared).padEnd(14)} ${formatCurrency(r.personal).padEnd(14)} ${r.count}`,
   );
   return [header, sep, ...lines].join("\n");
+}
+
+// ─── Envelope Budgeting ──────────────────────────────────────────────────────
+
+export type EnvelopeStatus = {
+  budgetId: string;
+  categoryId: string | null;
+  categoryName: string;
+  categoryIcon: string | null;
+  target: number;
+  funded: number;
+  spent: number;
+  remaining: number;
+  status: "funded" | "underfunded" | "overdrawn" | "on_track";
+};
+
+export function getEnvelopeStatus(
+  target: number,
+  funded: number,
+  spent: number,
+): EnvelopeStatus["status"] {
+  if (funded <= 0 && spent <= 0) return "underfunded";
+  if (spent > funded) return "overdrawn";
+  if (funded < target) return "underfunded";
+  return "funded";
+}
+
+export function computeReadyToAssign(
+  totalIncome: number,
+  totalFunded: number,
+): number {
+  return roundCurrency(totalIncome - totalFunded);
+}
+
+export function computeEnvelopeStatuses(
+  budgets: Budget[],
+  expenses: Expense[],
+  categories: Category[],
+  userId?: string,
+): EnvelopeStatus[] {
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  // Sum spent per category for the month
+  const spentByCategory = new Map<string | null, number>();
+  let totalSpent = 0;
+  for (const expense of expenses) {
+    const key = expense.category_id ?? null;
+    const amount = userId ? getUserShareForExpense(expense, userId) : Number(expense.amount);
+    spentByCategory.set(key, (spentByCategory.get(key) ?? 0) + amount);
+    totalSpent += amount;
+  }
+
+  return budgets.map((budget) => {
+    const category = budget.category_id ? categoryById.get(budget.category_id) : null;
+    // Overall envelope (category_id = null) tracks all spending.
+    // Per-category envelopes track only their own category.
+    const spent = budget.category_id === null ? totalSpent : (spentByCategory.get(budget.category_id) ?? 0);
+    const funded = Number(budget.funded_amount) || 0;
+    const target = Number(budget.amount);
+
+    return {
+      budgetId: budget.id,
+      categoryId: budget.category_id ?? null,
+      categoryName: category?.name ?? "Overall",
+      categoryIcon: category?.icon ?? null,
+      target,
+      funded,
+      spent: roundCurrency(spent),
+      remaining: roundCurrency(funded - spent),
+      status: getEnvelopeStatus(target, funded, spent),
+    };
+  });
+}
+
+/** Compute total income for a month from income records. */
+export function computeTotalIncome(income: Income[]): number {
+  return income.reduce((sum, i) => sum + Number(i.amount), 0);
 }

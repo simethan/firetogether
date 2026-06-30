@@ -25,7 +25,10 @@ import { getAuthUserId, getCurrentCouple } from "@/lib/auth";
 import {
   calculateDashboardSummary,
   computeBalanceTimeline,
+  computeEnvelopeStatuses,
   computeMonthlyTrends,
+  computeReadyToAssign,
+  computeTotalIncome,
   detectRecurringExpenses,
   detectStreaks,
   formatCurrency,
@@ -39,7 +42,7 @@ import {
   getMonthStartDate,
   getNextMonthEnd,
 } from "@/lib/finance";
-import type { Budget, Category, Expense, SavingsGoal, User } from "@/lib/types";
+import type { Budget, Category, Expense, Income, SavingsGoal, User } from "@/lib/types";
 
 export default async function DashboardPage({
   searchParams,
@@ -89,7 +92,7 @@ export default async function DashboardPage({
   const prevMonthStart = getMonthStartDate(prevMonth);
   const prevMonthEnd = getMonthStartDate(selectedMonth);
 
-  const [{ data: members }, { data: categories }, { data: multiMonthExpenses }, { data: budgets }, { data: goals }] =
+  const [{ data: members }, { data: categories }, { data: multiMonthExpenses }, { data: budgets }, { data: goals }, { data: income }] =
     await Promise.all([
       admin
         .from("users")
@@ -114,7 +117,7 @@ export default async function DashboardPage({
         .limit(300),
       admin
         .from("budgets")
-        .select("id, couple_id, category_id, month, amount")
+        .select("id, couple_id, category_id, month, amount, funded_amount")
         .eq("couple_id", user.couple_id)
         .eq("month", currentMonthStart),
       admin
@@ -125,6 +128,13 @@ export default async function DashboardPage({
         .eq("couple_id", user.couple_id)
         .order("created_at", { ascending: false })
         .limit(4),
+      admin
+        .from("income")
+        .select("id, couple_id, user_id, amount, source, income_date, created_at")
+        .eq("couple_id", user.couple_id)
+        .gte("income_date", currentMonthStart)
+        .lt("income_date", getNextMonthEnd(selectedMonth))
+        .order("income_date", { ascending: false }),
     ]);
 
   const typedMembers = (members ?? []) as User[];
@@ -140,6 +150,17 @@ export default async function DashboardPage({
   });
   const typedBudgets = (budgets ?? []) as Budget[];
   const typedGoals = (goals ?? []) as SavingsGoal[];
+  const typedIncome = (income ?? []) as Income[];
+
+  const totalIncome = computeTotalIncome(typedIncome);
+  const totalFunded = typedBudgets.reduce(
+    (sum, b) => sum + (Number(b.funded_amount) || 0),
+    0,
+  );
+  const readyToAssign = computeReadyToAssign(totalIncome, totalFunded);
+  const envelopes = computeEnvelopeStatuses(typedBudgets, typedMonthlyExpenses, typedCategories, user.id);
+  const overdrawnCount = envelopes.filter((e) => e.status === "overdrawn").length;
+  const totalEnvelopeSpent = envelopes.reduce((sum, e) => sum + e.spent, 0);
 
   const categoryById = new Map(
     typedCategories.map((category) => [category.id, category]),
@@ -305,13 +326,13 @@ export default async function DashboardPage({
 
         <Card size="sm">
           <CardHeader>
-            <CardDescription>Personal spend</CardDescription>
+            <CardDescription>Income</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums">
-              {formatCurrency(summary.personalSpent)}
+              {formatCurrency(totalIncome)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Your own personal expenses.
+            Money coming in this month.
           </CardContent>
         </Card>
       </section>
@@ -364,9 +385,9 @@ export default async function DashboardPage({
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle className="text-xl font-semibold">Budget</CardTitle>
+                  <CardTitle className="text-xl font-semibold">Envelopes</CardTitle>
                   <CardDescription>
-                    Your individual monthly limit.
+                    Funded envelopes and ready-to-assign income.
                   </CardDescription>
                 </div>
                 <Link
@@ -378,43 +399,70 @@ export default async function DashboardPage({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {overallBudgetAmount ? (
+              {envelopes.length > 0 ? (
                 <>
                   <div className="flex items-end justify-between gap-4">
                     <div>
                       <div className="text-3xl font-semibold tabular-nums">
-                        {overallBudgetPercent}%
+                        {formatCurrency(readyToAssign)}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {formatCurrency(myPaidThisMonth)} of{" "}
-                        {formatCurrency(overallBudgetAmount)}
+                        Ready to assign
                       </div>
                     </div>
                     <Badge
                       variant={
-                        budgetRemaining !== null && budgetRemaining < 0
-                          ? "destructive"
-                          : "secondary"
+                        readyToAssign < 0 ? "destructive" : "secondary"
                       }
                     >
-                      {budgetRemaining !== null && budgetRemaining < 0
-                        ? `${formatCurrency(Math.abs(budgetRemaining))} over`
-                        : `${formatCurrency(budgetRemaining ?? 0)} left`}
+                      {readyToAssign < 0
+                        ? "Over assigned"
+                        : `${envelopes.length} envelope${envelopes.length === 1 ? "" : "s"}`}
                     </Badge>
                   </div>
                   <Progress
-                    value={overallBudgetPercent}
+                    value={
+                      totalIncome > 0
+                        ? Math.min(100, Math.round((totalFunded / totalIncome) * 100))
+                        : 0
+                    }
                     className={
-                      overallBudgetPercent >= 100
+                      readyToAssign < 0
                         ? "[&>div]:bg-destructive"
-                        : ""
+                        : "[&>div]:bg-emerald-500"
                     }
                   />
+                  <div className="space-y-2">
+                    {envelopes.slice(0, 3).map((env) => {
+                      const pct = env.funded > 0
+                        ? Math.min(100, Math.round((env.spent / env.funded) * 100))
+                        : 0;
+                      return (
+                        <div key={env.budgetId} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate text-foreground">{env.categoryName}</span>
+                          <span className="font-mono tabular-nums text-muted-foreground">
+                            {formatCurrency(env.spent)} / {formatCurrency(env.funded)}
+                            {pct > 0 ? ` (${pct}%)` : ""}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {envelopes.length > 3 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{envelopes.length - 3} more envelope{envelopes.length - 3 === 1 ? "" : "s"}
+                      </div>
+                    )}
+                  </div>
+                  {overdrawnCount > 0 && (
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      {overdrawnCount} overdrawn — cover from budgets page
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-                  No overall budget set for {monthLabel}. Add one to see your
-                  individual monthly runway here.
+                  No envelopes set for {monthLabel}. Fund categories to track
+                  spending against budgets.
                 </div>
               )}
             </CardContent>
@@ -657,9 +705,21 @@ export default async function DashboardPage({
             </Link>
             <Link
               className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              href="/income"
+            >
+              Record income
+            </Link>
+            <Link
+              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               href="/budgets"
             >
               Manage budgets
+            </Link>
+            <Link
+              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              href="/scheduled"
+            >
+              Scheduled transactions
             </Link>
             <Link
               className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"

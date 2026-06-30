@@ -32,7 +32,7 @@ export default async function EditExpensePage({
 
   const { data: expense } = await admin
     .from("expenses")
-    .select("id, couple_id, user_id, category_id, amount, description, expense_date, split_type, custom_ratio, created_at")
+    .select("id, couple_id, user_id, category_id, payee_id, amount, description, expense_date, split_type, custom_ratio, created_at")
     .eq("id", id)
     .maybeSingle();
 

@@ -1,6 +1,8 @@
 import {
   Car,
+  DollarSign,
   Gamepad2,
+  Gift,
   Heart,
   Home,
   LucideIcon,
@@ -17,7 +19,9 @@ import { cn } from "@/lib/utils";
 
 const categoryIcons: Record<string, LucideIcon> = {
   Car,
+  DollarSign,
   Gamepad2,
+  Gift,
   Heart,
   Home,
   MoreHorizontal,
@@ -31,7 +35,9 @@ const categoryIcons: Record<string, LucideIcon> = {
 
 export const shortcutCategoryEmoji: Record<string, string> = {
   Car: "🚗",
+  DollarSign: "💵",
   Gamepad2: "🎮",
+  Gift: "🎁",
   Heart: "❤️",
   Home: "🏠",
   MoreHorizontal: "•••",

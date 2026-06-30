@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Category } from "@/lib/types";
 import { CategoryIcon } from "@/components/categories/category-icon";
+import { IconPicker } from "@/components/categories/icon-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +87,7 @@ function CategoryRow({ category }: { category: Category }) {
 
 function EditCategoryDialog({ category }: { category: Category }) {
   const [open, setOpen] = useState(false);
+  const [icon, setIcon] = useState(category.icon ?? "");
 
   async function handleSubmit(formData: FormData) {
     await updateCategoryAction(formData);
@@ -119,12 +121,8 @@ function EditCategoryDialog({ category }: { category: Category }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor={`edit-icon-${category.id}`}>Icon</Label>
-            <Input
-              id={`edit-icon-${category.id}`}
-              name="icon"
-              defaultValue={category.icon ?? ""}
-              placeholder="Heart, Car, Plane..."
-            />
+            <input type="hidden" name="icon" value={icon} />
+            <IconPicker value={icon} onChange={setIcon} />
           </div>
           <DialogFooter>
             <DialogClose
@@ -183,34 +181,47 @@ function DeleteCategoryDialog({ category }: { category: Category }) {
 
 export function CreateCategoryForm() {
   return (
-    <form action={createCategoryAction} className="flex flex-col gap-4 sm:flex-row sm:items-end">
-      <div className="flex-1 space-y-2">
-        <Label htmlFor="new-category-name" className="text-xs font-medium text-muted-foreground">
-          Name
-        </Label>
-        <Input
-          id="new-category-name"
-          name="name"
-          placeholder="Date nights"
-          required
-          className="h-10"
-        />
+    <form action={createCategoryAction} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div className="flex-1 space-y-2">
+          <Label htmlFor="new-category-name" className="text-xs font-medium text-muted-foreground">
+            Name
+          </Label>
+          <Input
+            id="new-category-name"
+            name="name"
+            placeholder="Date nights"
+            required
+            className="h-10"
+          />
+        </div>
+        <Button type="submit" className="h-10 shrink-0 gap-2">
+          <Plus className="h-4 w-4" />
+          Add
+        </Button>
       </div>
-      <div className="w-full space-y-2 sm:w-36">
-        <Label htmlFor="new-category-icon" className="text-xs font-medium text-muted-foreground">
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-muted-foreground">
           Icon
         </Label>
-        <Input
-          id="new-category-icon"
-          name="icon"
-          placeholder="Heart"
-          className="h-10"
-        />
+        <CategoryIconField />
       </div>
-      <Button type="submit" className="h-10 shrink-0 gap-2">
-        <Plus className="h-4 w-4" />
-        Add
-      </Button>
     </form>
+  );
+}
+
+function CategoryIconField() {
+  const [icon, setIcon] = useState("");
+
+  return (
+    <div className="space-y-2">
+      <input type="hidden" name="icon" value={icon} />
+      <IconPicker value={icon} onChange={setIcon} />
+      {icon && (
+        <p className="text-xs text-muted-foreground">
+          Selected: <CategoryIcon icon={icon} className="inline h-3.5 w-3.5 align-text-bottom" /> {icon}
+        </p>
+      )}
+    </div>
   );
 }
