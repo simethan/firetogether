@@ -127,6 +127,50 @@ export function CategoryHistoryDialog({
 
           {/* Chart — scrolls naturally with content */}
           <div className="overflow-y-auto pr-1">
+            {/* Payer total — prominent number when filtered */}
+            {expenses.length > 0 && (
+              <div className="mb-3">
+                {payerFilter === "all" ? (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      Total spent
+                    </span>
+                    <span className="text-lg font-bold tabular-nums text-foreground">
+                      {formatCurrency(
+                        filteredExpenses.reduce((t, e) => t + Number(e.amount), 0),
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-bold">
+                          {payerFilter === "me" ? "Y" : "P"}
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium text-foreground">
+                            {payerFilter === "me" ? "You paid" : "Partner paid"}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground/70">
+                            Current month
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xl font-bold tabular-nums text-foreground">
+                        {formatCurrency(
+                          filteredExpenses.reduce(
+                            (t, e) => t + Number(e.amount),
+                            0,
+                          ),
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {history.length > 0 ? (
               <div className="min-h-[112px] h-28 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -168,12 +212,23 @@ export function CategoryHistoryDialog({
                     />
                     <Bar
                       dataKey="amount"
-                      fill="var(--primary)"
+                      fill={
+                        payerFilter === "all"
+                          ? "var(--primary)"
+                          : payerFilter === "me"
+                            ? "var(--chart-2)"
+                            : "var(--chart-5)"
+                      }
                       radius={[4, 4, 0, 0]}
                       barSize={20}
                     />
                   </BarChart>
                 </ResponsiveContainer>
+                {payerFilter !== "all" && (
+                  <p className="mt-1 text-center text-[10px] text-muted-foreground/60">
+                    Full history · filtered total shown above
+                  </p>
+                )}
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">
