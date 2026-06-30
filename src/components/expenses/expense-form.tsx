@@ -113,7 +113,7 @@ export function ExpenseForm({ categories, expense }: ExpenseFormProps) {
               id="split_type"
               name="split_type"
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              defaultValue={isEditing ? expense!.split_type : "shared"}
+              defaultValue={isEditing ? expense!.split_type : "personal"}
             >
               <option value="shared">Shared</option>
               <option value="personal">Personal</option>

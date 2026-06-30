@@ -1,4 +1,4 @@
-export type Couple = {
+ export type Couple = {
   id: string;
   invite_code: string;
   created_at: string;

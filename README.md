@@ -17,11 +17,11 @@
 
 | Measure | Count |
 |---|---|
-| Pages | 11 routes |
+| Pages | 14 routes |
 | API routes | 7 |
-| Server actions | 18 |
-| Database tables | 7 |
-| Migrations | 4 |
+| Server actions | 21 |
+| Database tables | 9 |
+| Migrations | 5 |
 | UI components | 9 (shadcn) |
 | Custom components | 20+ |
 | Icons | 13 Lucide icon map |
@@ -80,6 +80,7 @@ supabase/migrations/002_auto_create_user.sql     # or 002_shortcut_token.sql
 supabase/migrations/003_drop_broken_trigger.sql   # if needed
 supabase/migrations/003_fix_auto_create_user_trigger.sql
 supabase/migrations/004_envelope_budgeting.sql
+supabase/migrations/005_shared_envelopes.sql
 ```
 
 Each migration is additive and idempotent (`IF NOT EXISTS`, `DROP POLICY IF EXISTS`).
@@ -110,7 +111,7 @@ The core of the app. Every expense records:
 
 | Route | Description |
 |---|---|
-| `/expenses` | Paginated list (20/page), filterable by month and category. Shows per-person share breakdown. Export to CSV or categories text report. |
+| `/expenses` | Paginated list (20/page), filterable by month, category, split type, and free-text search. Filters sit inside the transaction detail card alongside the data. Real-time search (250ms debounce). Summary cards (Total, Paid by me, My responsibility, Shared/custom), per-person breakdown, clickable By split type cards (Shared/Custom/Personal with distinct color tokens), category detail table, and transaction list with **Total / You / Partner** columns. Export to CSV or categories text report. |
 | `/expenses/new` | Create a new expense. Shows current user as payer with a link to iOS Shortcut setup. |
 | `/expenses/[id]/edit` | Edit or delete an existing expense. |
 
@@ -130,11 +131,10 @@ The main hub (`/dashboard`), organized as a single scrollable page:
 - **Ready to assign** — income vs. funded envelope bar
 - **Balance timeline** — stacked bar chart showing who-paid per month, with net balance line
 - **Spending trends sparkline** — 6-month trend with direction arrow
-- **Expense streaks** — current streak, longest streak, milestones
-- **Recurring expenses** — auto-detected (same category + amount appearing 2+ months)
+- **Recurring + Scheduled** — auto-detected recurring expenses (same category + amount appearing 2+ months), plus upcoming scheduled bills with due-soon indicators
 - **Spending insights** — category-level comparisons vs. previous month
-- **Spend map** — category breakdown chart with drill-down history dialog
-- **Envelope statuses** — quick view of funded envelopes
+- **Spend map** — category breakdown chart with drill-down history dialog (payer filter: All / Me / Partner)
+- **Envelope statuses** — quick view of funded envelopes (shared/individual badges)
 - **Goals** — savings goal progress
 - **Workspace dialog** — invite code sharing, member list
 
@@ -373,6 +373,7 @@ flowchart LR
 | `month` | DATE | First day of month |
 | `amount` | DECIMAL(10,2) | Target amount |
 | `funded_amount` | DECIMAL(10,2) | Default 0 (migration 004) |
+| `is_shared` | BOOLEAN | Default true (migration 005). Shared envelopes track gross category spend; individual envelopes track only the assigning user's share. |
 
 UNIQUE constraint: `(couple_id, category_id, month)` — upsert by this key.
 
@@ -536,8 +537,8 @@ The financial calculation engine with 20+ exported functions.
 - `calculateDashboardSummary({ expenses, users, budgets, categories })` → full summary with balances
 - `computeMonthlyTrends(expenses)` → monthly aggregates
 - `computeBalanceTimeline(expenses, users)` → who-paid timeline
-- `detectStreaks(expenses)` → current/longest streak
 - `detectRecurringExpenses(expenses, categories)` → 2+ month patterns
+- `buildScheduledDisplay(scheduled, categoryById)` → scheduled transaction display rows with category info
 - `generateInsights(current, previous, categories)` → spending insights
 - `getSpendingPersonality(total, sharedRatio, personalRatio)` → label
 - `computeCategoryHistory(expenses, categoryId, months)` → monthly per-category
