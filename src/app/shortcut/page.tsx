@@ -13,7 +13,7 @@ import { CategoryIcon } from "@/components/categories/category-icon";
 import { CopyButton } from "@/components/shortcut/copy-button";
 import { TokenManager } from "@/components/shortcut/token-manager";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { generateShortcutToken, getAuthUserId } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 export default async function ShortcutPage() {
@@ -36,19 +36,6 @@ export default async function ShortcutPage() {
 
   let shortcutToken = currentUser.shortcut_token;
 
-  if (!shortcutToken) {
-    shortcutToken = generateShortcutToken();
-
-    const { error } = await admin
-      .from("users")
-      .update({ shortcut_token: shortcutToken })
-      .eq("id", currentUser.id);
-
-    if (error) {
-      throw error;
-    }
-  }
-
   const { data: categories } = await admin
     .from("categories")
     .select("id, name, icon")
@@ -60,7 +47,7 @@ export default async function ShortcutPage() {
   const endpoint = `${getSiteUrl()}/api/shortcuts/add-expense`;
   const categoriesEndpoint = `${getSiteUrl()}/api/shortcuts/categories`;
   const summaryEndpoint = `${getSiteUrl()}/api/shortcuts/summary`;
-  const authHeader = `Bearer ${shortcutToken}`;
+  const authHeader = shortcutToken ? `Bearer ${shortcutToken}` : "";
   const shortcutUrl =
     "https://www.icloud.com/shortcuts/9dd9a791bd254b75badd37ef1d4e3d29";
 

@@ -1,39 +1,9 @@
 "use server";
 
-import { createServiceClient } from "@/lib/supabase/admin";
-import { getAuthUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-function parseString(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-async function getCurrentUserOrRedirect() {
-  const authUserId = await getAuthUserId();
-
-  if (!authUserId) {
-    redirect("/login");
-  }
-
-  const admin = createServiceClient();
-  const { data: currentUser } = await admin
-    .from("users")
-    .select("id, couple_id")
-    .eq("id", authUserId)
-    .maybeSingle();
-
-  if (!currentUser?.couple_id) {
-    redirect("/onboarding");
-  }
-
-  return { currentUser, admin } as const;
-}
+import { getCurrentUserOrRedirect, parseString } from "@/lib/actions";
 
 export async function createCategoryAction(formData: FormData) {
   const { currentUser, admin } = await getCurrentUserOrRedirect();

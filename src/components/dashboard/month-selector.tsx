@@ -18,8 +18,10 @@ type Props = {
 export function MonthSelector({ currentMonth, basePath = "/dashboard" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const timeZone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Singapore";
   const selectedMonth =
-    searchParams.get("month") || getCurrentMonthValue();
+    searchParams.get("month") || getCurrentMonthValue(timeZone);
 
   const prevMonth = getMonthOffset(1, selectedMonth);
   const nextMonth = getMonthOffset(-1, selectedMonth);

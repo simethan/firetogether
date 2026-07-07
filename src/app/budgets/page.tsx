@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
+import { getRequestTimeZone } from "@/lib/timezone";
 import {
   computeEnvelopeStatuses,
   computeReadyToAssign,
@@ -86,9 +87,10 @@ export default async function BudgetsPage({
 
   if (!currentUser?.couple_id) redirect("/onboarding");
 
-  const currentMonth = getCurrentMonthValue();
+  const tz = await getRequestTimeZone();
+  const currentMonth = getCurrentMonthValue(tz);
   const monthLabel = formatMonthLabel(currentMonth);
-  const currentMonthStart = `${currentMonth}-01`;
+  const currentMonthStart = getMonthStartDate(currentMonth);
   const monthEnd = getNextMonthEnd(currentMonth);
 
   const [{ data: categories }, { data: budgets }, { data: expenses }, { data: income }] =

@@ -126,3 +126,47 @@ export type ShortcutExpensePayload = {
   split_type: SplitType;
   custom_ratio?: number | null;
 };
+
+export type AccountCategory = "bank" | "investment" | "managed";
+
+export type NetWorthAccount = {
+  id: string;
+  couple_id: string;
+  name: string;
+  type: string;
+  icon: string | null;
+  account_category: AccountCategory;
+  bank_name: string | null;
+  broker: string | null;
+  exchange: string | null;
+  initial_investment: number | null;
+  account_number: string | null;
+  ticker: string | null;
+  quantity: number | null;
+  buy_price: number | null;
+  current_price: number | null;
+  currency: string;
+  last_price_fetched_at: string | null;
+  include_in_net_worth: boolean;
+  sort_order: number;
+  created_at: string;
+};
+
+export type AccountBalanceSnapshot = {
+  id: string;
+  account_id: string;
+  balance: number;
+  recorded_at: string;
+  notes: string | null;
+  created_at: string;
+};
+
+export type Dividend = {
+  id: string;
+  account_id: string;
+  amount: number;
+  currency: string;
+  pay_date: string;
+  notes: string | null;
+  created_at: string;
+};

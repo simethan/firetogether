@@ -18,6 +18,7 @@ import type { Category, ScheduledTransaction } from "@/lib/types";
 import {
   createScheduledAction,
   deleteScheduledAction,
+  postScheduledAction,
   toggleScheduledAction,
 } from "./actions";
 
@@ -324,6 +325,15 @@ export default async function ScheduledPage({
                         <span className="font-semibold tabular-nums text-foreground">
                           {formatCurrency(Number(entry.amount))}
                         </span>
+                        <form action={postScheduledAction}>
+                          <input type="hidden" name="id" value={entry.id} />
+                          <button
+                            type="submit"
+                            className="text-xs text-muted-foreground hover:text-primary"
+                          >
+                            Post
+                          </button>
+                        </form>
                         <form action={toggleScheduledAction}>
                           <input type="hidden" name="id" value={entry.id} />
                           <button

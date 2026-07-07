@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { createServiceClient } from "@/lib/supabase/admin";
+import { getRequestTimeZone } from "@/lib/timezone";
 import {
   calculateDashboardSummary,
   formatCurrency,
@@ -49,7 +50,8 @@ export async function GET(request: NextRequest) {
     return unauthorized("Invalid shortcut token.");
   }
 
-  const currentMonth = getCurrentMonthValue();
+  const tz = await getRequestTimeZone();
+  const currentMonth = getCurrentMonthValue(tz);
   const currentMonthStart = getMonthStartDate(currentMonth);
 
   const [{ data: members }, { data: categories }, { data: expenses }, { data: budgets }] = await Promise.all([

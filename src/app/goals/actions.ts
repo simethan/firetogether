@@ -1,53 +1,14 @@
 "use server";
 
-import { createServiceClient } from "@/lib/supabase/admin";
-import { getAuthUserId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-function parseAmount(value: FormDataEntryValue | null) {
-  const parsed = typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseString(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function parseDate(value: FormDataEntryValue | null) {
-  const parsed = parseString(value);
-  if (!parsed) {
-    return null;
-  }
-
-  return /^\d{4}-\d{2}-\d{2}$/.test(parsed) ? parsed : null;
-}
-
-async function getCurrentUserOrRedirect() {
-  const authUserId = await getAuthUserId();
-
-  if (!authUserId) {
-    redirect("/login");
-  }
-
-  const admin = createServiceClient();
-  const { data: currentUser } = await admin
-    .from("users")
-    .select("id, couple_id")
-    .eq("id", authUserId)
-    .maybeSingle();
-
-  if (!currentUser?.couple_id) {
-    redirect("/onboarding");
-  }
-
-  return { authUserId, currentUser, admin } as const;
-}
+import {
+  getCurrentUserOrRedirect,
+  parseAmount,
+  parseDate,
+  parseString,
+} from "@/lib/actions";
 
 export async function createGoalAction(formData: FormData): Promise<void> {
   const { authUserId, currentUser, admin } = await getCurrentUserOrRedirect();

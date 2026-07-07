@@ -1,43 +1,20 @@
 "use server";
 
-import { createServiceClient } from "@/lib/supabase/admin";
-import { getAuthUserId } from "@/lib/auth";
 import { getMonthStartDate } from "@/lib/finance";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-function parseAmount(value: FormDataEntryValue | null) {
-  const parsed = typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : null;
-}
+import {
+  getCurrentUserOrRedirect,
+  parseAmount,
+  parseString,
+} from "@/lib/actions";
 
 function parseMonth(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!/^\d{4}-\d{2}$/.test(trimmed)) return null;
   return getMonthStartDate(trimmed);
-}
-
-function parseString(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-async function getCurrentUserOrRedirect() {
-  const authUserId = await getAuthUserId();
-  if (!authUserId) redirect("/login");
-
-  const admin = createServiceClient();
-  const { data: currentUser } = await admin
-    .from("users")
-    .select("id, couple_id")
-    .eq("id", authUserId)
-    .maybeSingle();
-
-  if (!currentUser?.couple_id) redirect("/onboarding");
-
-  return { authUserId, currentUser, admin } as const;
 }
 
 export async function createIncomeAction(formData: FormData): Promise<void> {

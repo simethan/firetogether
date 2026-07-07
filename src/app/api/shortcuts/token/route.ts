@@ -21,23 +21,24 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  let token: string;
+  let token: string | undefined;
 
   try {
     const body = await request.json();
     token = body?.token?.trim();
   } catch {
     // No body or invalid JSON — generate a new random token
-    token = crypto.randomBytes(16).toString("hex");
   }
 
+  // Always strong by default: generate a 64-char hex token (256 bits).
   if (!token) {
-    token = crypto.randomBytes(16).toString("hex");
+    token = crypto.randomBytes(32).toString("hex");
   }
 
-  if (token.length < 8) {
+  // Custom tokens are allowed but must be high-entropy (>= 32 chars).
+  if (token.length < 32) {
     return NextResponse.json(
-      { error: "Token must be at least 8 characters" },
+      { error: "Token must be at least 32 characters" },
       { status: 400 },
     );
   }

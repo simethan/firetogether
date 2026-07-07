@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
+import { getRequestTimeZone } from "@/lib/timezone";
 import {
   formatCurrency,
   formatMonthLabel,
@@ -52,7 +53,8 @@ export default async function IncomePage({
 
   if (!currentUser?.couple_id) redirect("/onboarding");
 
-  const currentMonth = getCurrentMonthValue();
+  const tz = await getRequestTimeZone();
+  const currentMonth = getCurrentMonthValue(tz);
   const monthStart = getMonthStartDate(currentMonth);
   const monthEnd = getNextMonthEnd(currentMonth);
   const monthLabel = formatMonthLabel(currentMonth);

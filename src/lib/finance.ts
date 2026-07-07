@@ -1,4 +1,15 @@
-import type { Budget, Category, Expense, Income, SavingsGoal, User } from "@/lib/types";
+import { toSgd } from "@/lib/fx";
+import type {
+  AccountBalanceSnapshot,
+  AccountCategory,
+  Budget,
+  Category,
+  Expense,
+  Income,
+  NetWorthAccount,
+  SavingsGoal,
+  User,
+} from "@/lib/types";
 
 type DashboardExpenseWithCategory = Expense & {
   categories?: Category | null;
@@ -79,8 +90,14 @@ export type MonthlyHistory = {
   amount: number;
 };
 
-export function getCurrentMonthValue() {
-  return new Date().toISOString().slice(0, 7);
+export function getCurrentMonthValue(timeZone = "Asia/Singapore"): string {
+  // Use the user's timezone so "current month" matches what they see locally
+  // (avoids UTC drift that hides early-month expenses in positive offsets).
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+  }).format(new Date());
 }
 
 export function getMonthStartDate(monthValue: string) {
@@ -112,10 +129,10 @@ export function getLastNMonths(count: number, fromMonth?: string): string[] {
   return months;
 }
 
-export function formatCurrency(amount: number) {
+export function formatCurrency(amount: number, currency = "SGD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 2,
   }).format(amount);
 }
@@ -728,4 +745,403 @@ export function computeEnvelopeStatuses(
 /** Compute total income for a month from income records. */
 export function computeTotalIncome(income: Income[]): number {
   return income.reduce((sum, i) => sum + Number(i.amount), 0);
+}
+
+// ─── Net Worth Utilities ────────────────────────────────────────────
+
+export type NetWorthSummary = {
+  total: number;
+  accountsTotal: number;
+  stockValue: number;
+  stockPnL: number;
+  accountCount: number;
+};
+
+export type NetWorthTrendPoint = {
+  date: string;
+  total: number;
+};
+
+export function computeNetWorthTotal(
+  accounts: NetWorthAccount[],
+  latestBalances: Map<string, number>,
+  fxRates?: Map<string, number>,
+): number {
+  let total = 0;
+
+  for (const account of accounts) {
+    if (!account.include_in_net_worth) continue;
+
+    let balance: number;
+    if (account.ticker && account.current_price && account.quantity) {
+      // Stock account: current price × quantity
+      balance = Number(account.current_price) * Number(account.quantity);
+    } else if (latestBalances.has(account.id)) {
+      // Bank/other: use latest manual snapshot
+      balance = latestBalances.get(account.id) ?? 0;
+    } else {
+      continue;
+    }
+
+    total += toSgd(balance, account.currency, fxRates ?? new Map());
+  }
+
+  return total;
+}
+
+export function computeStockValue(
+  accounts: NetWorthAccount[],
+  fxRates?: Map<string, number>,
+): number {
+  const rates = fxRates ?? new Map();
+  return accounts
+    .filter((a) => a.include_in_net_worth && a.ticker && a.current_price && a.quantity)
+    .reduce(
+      (sum, a) =>
+        sum +
+        toSgd(
+          Number(a.current_price!) * Number(a.quantity!),
+          a.currency,
+          rates,
+        ),
+      0,
+    );
+}
+
+export function computeStockCost(
+  accounts: NetWorthAccount[],
+  fxRates?: Map<string, number>,
+): number {
+  const rates = fxRates ?? new Map();
+  return accounts
+    .filter((a) => a.include_in_net_worth && a.ticker && a.buy_price && a.quantity)
+    .reduce(
+      (sum, a) =>
+        sum +
+        toSgd(
+          Number(a.buy_price!) * Number(a.quantity!),
+          a.currency,
+          rates,
+        ),
+      0,
+    );
+}
+
+export function computeStockPnL(
+  accounts: NetWorthAccount[],
+  fxRates?: Map<string, number>,
+): {
+  pnl: number;
+  pnlPercent: number;
+} {
+  const value = computeStockValue(accounts, fxRates);
+  const cost = computeStockCost(accounts, fxRates);
+
+  if (cost === 0) return { pnl: 0, pnlPercent: 0 };
+
+  return {
+    pnl: value - cost,
+    pnlPercent: roundCurrency(((value - cost) / cost) * 100),
+  };
+}
+
+/**
+ * Compute a daily timeline of stock portfolio value from balance snapshots.
+ * Only includes accounts with a ticker.  For each day, walks snapshot cursors
+ * just like computeNetWorthHistory.  Stock accounts without any snapshots
+ * contribute only today's current_price × quantity.
+ *
+ * Returns an array of { date, total } points sorted ascending.
+ */
+export function computeStockHistory(
+  accounts: NetWorthAccount[],
+  snapshots: AccountBalanceSnapshot[],
+  fxRates?: Map<string, number>,
+): NetWorthTrendPoint[] {
+  const stockAccts = accounts.filter((a) => a.include_in_net_worth && a.ticker && a.quantity);
+  if (stockAccts.length === 0) return [];
+
+  const stockIds = new Set(stockAccts.map((a) => a.id));
+
+  // Group snapshots by account, sorted
+  const snapshotsByAccount = new Map<string, AccountBalanceSnapshot[]>();
+  for (const s of snapshots) {
+    if (!stockIds.has(s.account_id)) continue;
+    const list = snapshotsByAccount.get(s.account_id) ?? [];
+    list.push(s);
+    snapshotsByAccount.set(s.account_id, list);
+  }
+  for (const [, list] of snapshotsByAccount) {
+    list.sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  let earliestDate = today;
+
+  for (const [, list] of snapshotsByAccount) {
+    if (list.length > 0 && list[0].recorded_at < earliestDate) {
+      earliestDate = list[0].recorded_at;
+    }
+  }
+  for (const a of stockAccts) {
+    if (a.created_at && a.created_at.slice(0, 10) < earliestDate) {
+      earliestDate = a.created_at.slice(0, 10);
+    }
+  }
+
+  // Stock accounts that have NO snapshots
+  const stockWithSnapshots = new Set(snapshotsByAccount.keys());
+  const stockWithoutHist = stockAccts.filter((a) => !stockWithSnapshots.has(a.id));
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const start = new Date(earliestDate);
+  const end = new Date(today);
+  const rates = fxRates ?? new Map();
+  const points: NetWorthTrendPoint[] = [];
+
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+
+  const snapCursor = new Map<string, number>();
+  for (const [acctId] of snapshotsByAccount) {
+    snapCursor.set(acctId, 0);
+  }
+
+  for (let d = new Date(start); d <= end; d = new Date(d.getTime() + dayMs)) {
+    const dateStr = d.toISOString().slice(0, 10);
+    const isToday = dateStr === today;
+
+    let snapshotSum = 0;
+    for (const [acctId, list] of snapshotsByAccount) {
+      let idx = snapCursor.get(acctId) ?? 0;
+      while (idx < list.length && list[idx].recorded_at <= dateStr) {
+        idx++;
+      }
+      if (idx > 0) {
+        const matched = list[idx - 1];
+        const account = accountById.get(acctId);
+        if (account) {
+          snapshotSum += toSgd(matched.balance, account.currency, rates);
+        } else {
+          snapshotSum += matched.balance;
+        }
+      }
+      snapCursor.set(acctId, idx);
+    }
+
+    let currentSgd = 0;
+    if (isToday) {
+      for (const a of stockWithoutHist) {
+        currentSgd += toSgd(
+          Number(a.current_price ?? 0) * Number(a.quantity!),
+          a.currency,
+          rates,
+        );
+      }
+    }
+
+    const total = snapshotSum + currentSgd;
+    if (snapshotSum > 0 || currentSgd > 0 || isToday) {
+      points.push({ date: dateStr, total });
+    }
+  }
+
+  if (points.length === 0 && stockAccts.length > 0) {
+    const value = computeStockValue(stockAccts, fxRates);
+    if (value > 0) {
+      return [{ date: today, total: value }];
+    }
+  }
+
+  return points;
+}
+
+/**
+ * Compute a rich daily history of net worth across all accounts.
+ * Builds a timeline from the earliest balance snapshot (or account creation)
+ * to today.  Each day reflects the latest-known snapshot balance for every
+ * account (bank, managed, or stock) that has one.
+ *
+ * Stock accounts that have NO balance snapshot at all are excluded from
+ * historical points — they only contribute their current_price × quantity
+ * value on today's date.  This prevents inflating the past with today's
+ * stock portfolio value.
+ *
+ * Returns an array of { date, total } points sorted ascending.
+ */
+export function computeNetWorthHistory(
+  accounts: NetWorthAccount[],
+  snapshots: AccountBalanceSnapshot[],
+  fxRates?: Map<string, number>,
+): NetWorthTrendPoint[] {
+  if (accounts.length === 0) return [];
+
+  // 1. Group snapshots by account, sorted by date
+  const snapshotsByAccount = new Map<string, AccountBalanceSnapshot[]>();
+  for (const s of snapshots) {
+    const list = snapshotsByAccount.get(s.account_id) ?? [];
+    list.push(s);
+    snapshotsByAccount.set(s.account_id, list);
+  }
+  for (const [, list] of snapshotsByAccount) {
+    list.sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
+  }
+
+  // 2. Find the full date range
+  const today = new Date().toISOString().slice(0, 10);
+  let earliestDate = today;
+
+  for (const [, list] of snapshotsByAccount) {
+    if (list.length > 0 && list[0].recorded_at < earliestDate) {
+      earliestDate = list[0].recorded_at;
+    }
+  }
+  for (const a of accounts) {
+    if (a.created_at && a.created_at.slice(0, 10) < earliestDate) {
+      earliestDate = a.created_at.slice(0, 10);
+    }
+  }
+
+  // 3. Identify stock accounts that have NO snapshot history at all
+  const stockAcctsWithSnapshots = new Set<string>();
+  for (const [acctId] of snapshotsByAccount) {
+    const acct = accounts.find((a) => a.id === acctId);
+    if (acct?.ticker) stockAcctsWithSnapshots.add(acctId);
+  }
+  const stockAcctsWithoutHistory = accounts.filter(
+    (a) => a.ticker && a.current_price && a.quantity && !stockAcctsWithSnapshots.has(a.id),
+  );
+
+  // 4. Build a day-by-day timeline
+  const dayMs = 24 * 60 * 60 * 1000;
+  const start = new Date(earliestDate);
+  const end = new Date(today);
+  const rates = fxRates ?? new Map();
+  const points: NetWorthTrendPoint[] = [];
+
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+
+  // Per-account cursor into its snapshot list
+  const snapCursor = new Map<string, number>();
+  for (const [acctId] of snapshotsByAccount) {
+    snapCursor.set(acctId, 0);
+  }
+
+  for (let d = new Date(start); d <= end; d = new Date(d.getTime() + dayMs)) {
+    const dateStr = d.toISOString().slice(0, 10);
+    const isToday = dateStr === today;
+
+    // Advance snapshot cursors for this date
+    let snapshotSum = 0;
+    for (const [acctId, list] of snapshotsByAccount) {
+      let idx = snapCursor.get(acctId) ?? 0;
+      while (idx < list.length && list[idx].recorded_at <= dateStr) {
+        idx++;
+      }
+      if (idx > 0) {
+        const matched = list[idx - 1];
+        const account = accountById.get(acctId);
+        if (account) {
+          snapshotSum += toSgd(matched.balance, account.currency, rates);
+        } else {
+          snapshotSum += matched.balance;
+        }
+      }
+      snapCursor.set(acctId, idx);
+    }
+
+    // For today, also add current value of stock accounts without snapshots
+    let stockCurrentSgd = 0;
+    if (isToday) {
+      for (const a of stockAcctsWithoutHistory) {
+        stockCurrentSgd += toSgd(
+          Number(a.current_price!) * Number(a.quantity!),
+          a.currency,
+          rates,
+        );
+      }
+    }
+
+    const total = snapshotSum + stockCurrentSgd;
+
+    // Only emit points that have data (or today)
+    if (snapshotSum > 0 || stockCurrentSgd > 0 || isToday) {
+      points.push({ date: dateStr, total });
+    }
+  }
+
+  // If we have zero points, fall back to a today-only entry
+  if (points.length === 0) {
+    const latestTotal = computeNetWorthTotal(accounts, new Map(), fxRates);
+    if (latestTotal > 0) {
+      return [{ date: today, total: latestTotal }];
+    }
+  }
+
+  return points;
+}
+
+export function getStockAccounts(accounts: NetWorthAccount[]): NetWorthAccount[] {
+  return accounts.filter((a) => a.ticker);
+}
+
+export function getNonStockAccounts(accounts: NetWorthAccount[]): NetWorthAccount[] {
+  return accounts.filter((a) => !a.ticker);
+}
+
+export function getAccountsByCategory(
+  accounts: NetWorthAccount[],
+  category: AccountCategory,
+): NetWorthAccount[] {
+  return accounts.filter((a) => a.account_category === category);
+}
+
+export function computeCategoryTotal(
+  accounts: NetWorthAccount[],
+  category: AccountCategory,
+  latestBalances: Map<string, number>,
+  fxRates?: Map<string, number>,
+): number {
+  const rates = fxRates ?? new Map();
+  return getAccountsByCategory(accounts, category).reduce((sum, a) => {
+    if (!a.include_in_net_worth) return sum;
+    let balance = 0;
+    if (a.ticker && a.current_price && a.quantity) {
+      balance = Number(a.current_price) * Number(a.quantity);
+    } else {
+      balance = latestBalances.get(a.id) ?? 0;
+    }
+    return sum + toSgd(balance, a.currency, rates);
+  }, 0);
+}
+
+export function computeManagedPnL(
+  account: NetWorthAccount,
+  latestBalances: Map<string, number>,
+  fxRates?: Map<string, number>,
+): { pnl: number; pnlPercent: number } | null {
+  if (account.account_category !== "managed") return null;
+  const currentValue = latestBalances.get(account.id);
+  const initial = account.initial_investment;
+  if (currentValue == null || initial == null || initial === 0) return null;
+  const rates = fxRates ?? new Map();
+  const currentSgd = toSgd(currentValue, account.currency, rates);
+  const initialSgd = toSgd(Number(initial), account.currency, rates);
+  return {
+    pnl: currentSgd - initialSgd,
+    pnlPercent: roundCurrency(((currentSgd - initialSgd) / initialSgd) * 100),
+  };
+}
+
+export function formatNetWorth(amount: number): string {
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function getAccountBalanceLabel(account: NetWorthAccount): number | null {
+  if (account.ticker && account.current_price && account.quantity) {
+    return Number(account.current_price) * Number(account.quantity);
+  }
+  return null;
 }

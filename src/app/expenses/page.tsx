@@ -6,6 +6,7 @@ import { MonthSelector } from "@/components/dashboard/month-selector";
 import { Badge } from "@/components/ui/badge";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
+import { getRequestTimeZone } from "@/lib/timezone";
 import {
   getCurrentMonthValue,
   formatMonthLabel,
@@ -20,11 +21,12 @@ export default async function ExpensesPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { month: monthParam } = await searchParams;
+  const tz = await getRequestTimeZone();
   const rawMonth = typeof monthParam === "string" ? monthParam : null;
   const selectedMonth =
-    rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue()
+    rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue(tz)
       ? rawMonth
-      : getCurrentMonthValue();
+      : getCurrentMonthValue(tz);
 
   const authUserId = await getAuthUserId();
 
@@ -43,7 +45,7 @@ export default async function ExpensesPage({
     redirect("/onboarding");
   }
 
-  const currentMonth = getCurrentMonthValue();
+  const currentMonth = getCurrentMonthValue(tz);
   const monthStart = getMonthStartDate(selectedMonth);
   const monthEnd = getNextMonthEnd(selectedMonth);
   const monthLabel = formatMonthLabel(selectedMonth);

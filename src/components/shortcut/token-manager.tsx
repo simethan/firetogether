@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/shortcut/copy-button";
 
 type Props = {
-  currentToken: string;
+  currentToken: string | null;
   authHeader: string;
 };
 
@@ -23,8 +23,8 @@ export function TokenManager({ currentToken, authHeader }: Props) {
 
   async function handleSetToken() {
     const token = customToken.trim();
-    if (!token || token.length < 8) {
-      setMessage({ type: "error", text: "Token must be at least 8 characters." });
+    if (!token || token.length < 32) {
+      setMessage({ type: "error", text: "Token must be at least 32 characters." });
       return;
     }
     setSaving(true);
@@ -83,10 +83,12 @@ export function TokenManager({ currentToken, authHeader }: Props) {
           <span className="font-medium text-foreground">
             Your Bearer token
           </span>
-          <CopyButton text={currentToken} label="Copy" copiedLabel="Copied!" />
+          {currentToken ? (
+            <CopyButton text={currentToken} label="Copy" copiedLabel="Copied!" />
+          ) : null}
         </div>
         <div className="break-all rounded-xl border border-border bg-muted/30 p-3 font-mono text-xs text-foreground">
-          {currentToken}
+          {currentToken || "No token yet — generate one below."}
         </div>
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground">
           This token belongs to your account. Anyone with it can add expenses or read your data — keep it private, don't share screenshots of this page.
@@ -101,7 +103,7 @@ export function TokenManager({ currentToken, authHeader }: Props) {
           onClick={handleRegenerate}
           disabled={saving}
         >
-          {saving ? "Working…" : "Generate new"}
+          {saving ? "Working…" : currentToken ? "Generate new" : "Create token"}
         </Button>
       </div>
 
@@ -116,14 +118,14 @@ export function TokenManager({ currentToken, authHeader }: Props) {
               setCustomToken(e.target.value);
               setMessage(null);
             }}
-            placeholder="Enter a custom token (min 8 characters)"
+             placeholder="Enter a custom token (min 32 characters)"
             className="font-mono text-sm"
           />
           <Button
             type="button"
             size="sm"
             onClick={handleSetToken}
-            disabled={saving || customToken.trim().length < 8}
+            disabled={saving || customToken.trim().length < 32}
           >
             Save
           </Button>

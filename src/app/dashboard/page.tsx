@@ -22,6 +22,7 @@ import { SpendingTrendsSparkline } from "@/components/dashboard/spending-trends-
 import { WorkspaceDialog } from "@/components/dashboard/workspace-dialog";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId, getCurrentCouple } from "@/lib/auth";
+import { getRequestTimeZone } from "@/lib/timezone";
 import {
   calculateDashboardSummary,
   computeBalanceTimeline,
@@ -66,17 +67,18 @@ export default async function DashboardPage({
   }
 
   const params = await searchParams;
+  const tz = await getRequestTimeZone();
   const rawMonth = typeof params.month === "string" ? params.month : null;
   const selectedMonth =
-    rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue()
+    rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) && rawMonth <= getCurrentMonthValue(tz)
       ? rawMonth
-      : getCurrentMonthValue();
+      : getCurrentMonthValue(tz);
   const categoryFilter =
     typeof params.category === "string" && params.category.length > 0
       ? params.category
       : null;
 
-  const currentMonth = getCurrentMonthValue();
+  const currentMonth = getCurrentMonthValue(tz);
   const currentMonthStart = getMonthStartDate(selectedMonth);
   const monthLabel = formatMonthLabel(selectedMonth);
   const couple = await getCurrentCouple(user.couple_id);
@@ -112,8 +114,7 @@ export default async function DashboardPage({
         .eq("couple_id", user.couple_id)
         .gte("expense_date", multiMonthStart)
         .lt("expense_date", multiMonthEnd)
-        .order("expense_date", { ascending: false })
-        .limit(300),
+        .order("expense_date", { ascending: false }),
       admin
         .from("budgets")
         .select("id, couple_id, category_id, month, amount, funded_amount, is_shared")

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AppNavigation } from "@/components/layout/app-navigation";
 import { PageTransition } from "@/components/layout/page-transition";
+import { TimeZoneSync } from "@/components/layout/time-zone-sync";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -8,8 +9,6 @@ export const viewport: Viewport = {
   themeColor: "#f97316",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -48,6 +47,7 @@ export default function RootLayout({
           </main>
         </div>
         <Toaster position="top-center" richColors />
+        <TimeZoneSync />
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import {
   CalendarClock,
   Goal,
   Home,
+  Landmark,
   PlusCircle,
   ReceiptText,
   Smartphone,
@@ -22,6 +23,7 @@ const primaryLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/expenses", label: "Expenses", icon: ReceiptText },
   { href: "/income", label: "Income", icon: Wallet },
+  { href: "/net-worth", label: "Net Worth", icon: Landmark },
   { href: "/budgets", label: "Budgets", icon: Calculator },
   { href: "/goals", label: "Goals", icon: Goal },
 ];
@@ -74,7 +76,7 @@ export function AppNavigation() {
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        <nav aria-label="Primary" className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
           {primaryLinks.map((item) => {
             const Icon = item.icon;
             const active = isActive(pathname, item.href);
@@ -141,7 +143,7 @@ export function AppNavigation() {
       </aside>
 
       {/* Mobile bottom tab bar — hidden from md breakpoint */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
+      <nav aria-label="Mobile" className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
 
         <div className="flex gap-1 overflow-x-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 scrollbar-none">
           {[...primaryLinks, ...secondaryLinks].map((item) => {
