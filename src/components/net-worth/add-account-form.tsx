@@ -8,13 +8,17 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { TickerSearch } from "./ticker-search";
+import { AccountGlyph } from "@/components/brand/marks";
 
 type Category = "bank" | "investment" | "managed";
 
-const categoryMeta: Record<Category, { label: string; icon: string }> = {
-  bank: { label: "Bank", icon: "🏦" },
-  investment: { label: "Stocks", icon: "📈" },
-  managed: { label: "Managed", icon: "🤖" },
+const categoryMeta: Record<
+  Category,
+  { label: string; glyph: Category }
+> = {
+  bank: { label: "Bank", glyph: "bank" },
+  investment: { label: "Stocks", glyph: "investment" },
+  managed: { label: "Managed", glyph: "managed" },
 };
 
 const bankPresets = ["DBS", "OCBC", "UOB", "Maybank", "CIMB", "Standard Chartered", "Citibank", "Trust Bank"];
@@ -86,7 +90,7 @@ export function AddAccountForm({ createAccount }: Props) {
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <span>{m.icon}</span>
+                <AccountGlyph kind={m.glyph} className="h-4 w-4" />
                 <span>{m.label}</span>
               </button>
             ),

@@ -12,8 +12,10 @@ import { Input } from "@/components/ui/input";
 import { StockPerformanceChart } from "@/components/net-worth/stock-performance-chart";
 import { BackfillDialog } from "@/components/net-worth/backfill-dialog";
 import { AddAccountForm } from "@/components/net-worth/add-account-form";
+import { AccountGlyph } from "@/components/brand/marks";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthUserId } from "@/lib/auth";
+import { AutoBackfill } from "@/components/net-worth/auto-backfill";
 import { toSgd, formatWithCurrency } from "@/lib/fx";
 import { fetchExchangeRates } from "@/lib/fx-rates";
 import {
@@ -41,7 +43,6 @@ import {
   recordBalanceAction,
   recordDividendAction,
   refreshStockPricesAction,
-  bulkBackfillAction,
 } from "./actions";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
@@ -101,7 +102,7 @@ async function fetchData(coupleId: string) {
       .select("*")
       .in("account_id", accountIds)
       .order("recorded_at", { ascending: false })
-      .limit(500),
+      .limit(100000),
     admin
       .from("dividends")
       .select("*")
@@ -196,11 +197,6 @@ function AccountCard({
   const isStock = account.account_category === "investment";
   const isManaged = account.account_category === "managed";
   const isBank = account.account_category === "bank";
-  const accentColor = isStock
-    ? "bg-chart-1"
-    : isManaged
-      ? "bg-chart-3"
-      : "bg-chart-2";
 
   const sgdValue =
     currentValue !== null && isForeign
@@ -209,8 +205,6 @@ function AccountCard({
 
   return (
     <Card key={account.id} className="relative overflow-hidden">
-      {/* Colored left-edge accent */}
-      <div className={`absolute left-0 top-0 h-full w-[3px] ${accentColor}`} />
 
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -220,7 +214,10 @@ function AccountCard({
                 isStock ? "bg-chart-1/10" : isManaged ? "bg-chart-3/10" : "bg-chart-2/10"
               }`}
             >
-              {account.icon || (isStock ? "📈" : isManaged ? "🤖" : "🏦")}
+              <AccountGlyph
+                kind={isStock ? "investment" : isManaged ? "managed" : "bank"}
+                className="h-4 w-4 text-foreground"
+              />
             </div>
             <div className="min-w-0">
               <CardTitle className="truncate text-base">{account.name}</CardTitle>
@@ -338,6 +335,7 @@ function AccountCard({
           {isStock && (
             <form action={recordDividendAction} className="flex gap-1.5">
               <input type="hidden" name="account_id" value={account.id} />
+              <input type="hidden" name="currency" value={account.currency ?? "SGD"} />
               <input
                 type="date"
                 name="pay_date"
@@ -349,7 +347,7 @@ function AccountCard({
                 type="number"
                 min="0.01"
                 step="0.01"
-                placeholder="Dividend"
+                placeholder={`Dividend (${account.currency ?? "SGD"})`}
                 required
                 className="h-7 min-w-0 flex-1 text-xs"
               />
@@ -374,13 +372,13 @@ function AccountCard({
 
 function AccountSection({
   title,
-  emoji,
+  glyph,
   accounts,
   latestBalances,
   fxRates,
 }: {
   title: string;
-  emoji: string;
+  glyph: "bank" | "investment" | "managed";
   accounts: NetWorthAccount[];
   latestBalances: Map<string, number>;
   fxRates?: Map<string, number>;
@@ -390,7 +388,7 @@ function AccountSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-lg">{emoji}</span>
+        <AccountGlyph kind={glyph} className="h-5 w-5 text-taupe" />
         <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">{accounts.length}</span>
       </div>
@@ -488,31 +486,48 @@ export default async function NetWorthPage({
   // Stock-only history & per-ticker data for the stock performance chart
   const stockHistory = computeStockHistory(typedAccounts, typedSnapshots, fxRates);
   const stockCostBasis = computeStockCost(typedAccounts, fxRates);
-  const stockTickers = stockAccounts
-    .filter((a) => a.include_in_net_worth)
-    .filter((a): a is NetWorthAccount & { ticker: string } => !!a.ticker)
-    .map((a) => {
-      const valueInSgd = toSgd(
-        Number(a.current_price!) * Number(a.quantity!),
-        a.currency,
-        fxRates ?? new Map(),
-      );
-      const costInSgd = a.buy_price
-        ? toSgd(Number(a.buy_price) * Number(a.quantity!), a.currency, fxRates ?? new Map())
-        : 0;
-      const pnl = valueInSgd - costInSgd;
-      const pnlPercent = costInSgd > 0 ? (pnl / costInSgd) * 100 : 0;
+
+  // Collapse stock accounts into one row per ticker so multiple lots of the
+  // same symbol are totalled together (also keeps chart keys unique).
+  const tickerAgg = new Map<string, { valueInSgd: number; costInSgd: number }>();
+  for (const a of stockAccounts.filter((acc) => acc.include_in_net_worth && acc.ticker)) {
+    const valueInSgd = toSgd(
+      Number(a.current_price!) * Number(a.quantity!),
+      a.currency,
+      fxRates ?? new Map(),
+    );
+    const costInSgd = a.buy_price
+      ? toSgd(Number(a.buy_price) * Number(a.quantity!), a.currency, fxRates ?? new Map())
+      : 0;
+    const cur = tickerAgg.get(a.ticker!) ?? { valueInSgd: 0, costInSgd: 0 };
+    cur.valueInSgd += valueInSgd;
+    cur.costInSgd += costInSgd;
+    tickerAgg.set(a.ticker!, cur);
+  }
+  const stockTickers = Array.from(tickerAgg.entries())
+    .map(([ticker, agg]) => {
+      const pnl = Math.round((agg.valueInSgd - agg.costInSgd) * 100) / 100;
+      const pnlPercent = agg.costInSgd > 0 ? (pnl / agg.costInSgd) * 100 : 0;
       return {
-        ticker: a.ticker,
-        valueInSgd: Math.round(valueInSgd * 100) / 100,
-        pnl: Math.round(pnl * 100) / 100,
+        ticker,
+        valueInSgd: Math.round(agg.valueInSgd * 100) / 100,
+        pnl,
         pnlPercent: Math.round(pnlPercent * 10) / 10,
       };
-    });
+    })
+    .sort((a, b) => b.valueInSgd - a.valueInSgd);
+
+  // Collate all dividends into a single SGD total.
+  const dividendTotalSgd = typedDividends.reduce((sum, d) => {
+    const currency = d.currency && d.currency !== "SGD" ? d.currency : "SGD";
+    return sum + toSgd(Number(d.amount), currency, fxRates ?? new Map());
+  }, 0);
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <ErrorBanner error={resolvedSearchParams.error} />
+
+      <AutoBackfill />
 
       {!fxRatesAvailable && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
@@ -525,14 +540,33 @@ export default async function NetWorthPage({
       {/* ─── Hero ─── */}
       <section className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-card p-6 sm:p-8 lg:p-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Total net worth
+          <div className="space-y-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-taupe">
+              Together · net worth
             </p>
-            <p className="text-5xl font-semibold tracking-tight text-foreground sm:text-6xl lg:text-7xl tabular-nums">
+            <p className="font-heading text-4xl font-semibold tracking-tight text-foreground tabular-nums break-words sm:text-5xl lg:text-7xl">
               <span>{netWorthTotal >= 0 ? "" : "−"}</span>
               S$&thinsp;{formatNetWorth(Math.abs(netWorthTotal))}
             </p>
+            <svg
+              aria-hidden
+              className="h-5 w-28 text-ember/70"
+              viewBox="0 0 120 20"
+              fill="none"
+            >
+              <path
+                d="M2 2 C40 2 44 18 60 18"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path
+                d="M118 2 C80 2 76 18 60 18"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
 
             {/* Stacked bar + percentage legend */}
             <CompositionBar
@@ -546,7 +580,7 @@ export default async function NetWorthPage({
               {stockPnL.pnl !== 0 && (
                 <span
                   className={`inline-flex items-center gap-1 text-sm tabular-nums ${
-                    stockPnL.pnl >= 0 ? "text-emerald-500" : "text-destructive"
+                    stockPnL.pnl >= 0 ? "text-sage" : "text-destructive"
                   }`}
                 >
                   <TrendArrow value={stockPnL.pnl} />
@@ -559,8 +593,8 @@ export default async function NetWorthPage({
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <BackfillDialog backfillAction={bulkBackfillAction} />
+          <div className="flex flex-wrap gap-2">
+            <BackfillDialog />
             <form action={refreshStockPricesAction}>
               <Button type="submit" variant="outline" size="sm">
                 Refresh prices
@@ -577,6 +611,7 @@ export default async function NetWorthPage({
           <StockPerformanceChart
             history={stockHistory}
             costBasis={stockCostBasis}
+            dividendTotal={dividendTotalSgd}
             tickers={stockTickers}
           />
         </section>
@@ -589,21 +624,21 @@ export default async function NetWorthPage({
       <div className="space-y-8">
         <AccountSection
           title="Bank Accounts"
-          emoji="🏦"
+          glyph="bank"
           accounts={bankAccounts}
           latestBalances={latestBalances}
           fxRates={fxRates}
         />
         <AccountSection
           title="Stock Holdings"
-          emoji="📈"
+          glyph="investment"
           accounts={stockAccounts}
           latestBalances={latestBalances}
           fxRates={fxRates}
         />
         <AccountSection
           title="Managed Funds"
-          emoji="🤖"
+          glyph="managed"
           accounts={managedAccounts}
           latestBalances={latestBalances}
           fxRates={fxRates}

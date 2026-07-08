@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const viewport: Viewport = {
-  themeColor: "#f97316",
+  themeColor: "#d9531e",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -38,6 +38,16 @@ export default function RootLayout({
     >
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="min-h-dvh flex flex-col bg-background text-foreground">
         <div className="flex flex-1 flex-row">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { BrandMark } from "@/components/brand/marks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calculator, Goal, ReceiptText, Tags, Users, Smartphone } from "lucide-react";
 
@@ -44,8 +45,8 @@ export default function Home() {
       <section className="relative overflow-hidden border-b border-border/60">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center sm:gap-8 sm:py-28 lg:py-36">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-5xl">
-            🔥
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-ember">
+            <BrandMark className="h-10 w-10" />
           </div>
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">

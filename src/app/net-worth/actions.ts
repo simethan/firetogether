@@ -3,12 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import {
   getCurrentUserOrRedirect,
   parseAmount,
   parseDate,
   parseString,
 } from "@/lib/actions";
+import {
+  backfillAccountHistory,
+  ensureStockHistory,
+  fetchHistoricalClosePrices,
+} from "@/lib/net-worth-backfill";
 
 export async function createAccountAction(formData: FormData): Promise<void> {
   const { currentUser, admin } = await getCurrentUserOrRedirect();
@@ -67,7 +74,32 @@ export async function createAccountAction(formData: FormData): Promise<void> {
     basePayload.buy_price = parseAmount(formData.get("buy_price")) ?? null;
     basePayload.current_price = parseAmount(formData.get("current_price")) ?? null;
     basePayload.initial_investment = parseAmount(formData.get("initial_investment")) ?? null;
-    await insertAccount();
+
+    const { data: account, error } = await admin
+      .from("net_worth_accounts")
+      .insert(basePayload)
+      .select("id, created_at, ticker, quantity")
+      .maybeSingle();
+
+    if (error) redirect(`/net-worth?error=${encodeURIComponent(error.message)}`);
+
+    // Automatically backfill historical prices so the chart has data without
+    // a manual backfill step.  Failures are non-fatal — the chart falls back
+    // to the entered current price.
+    if (account?.ticker && account?.quantity) {
+      const startStr = (account.created_at ?? new Date().toISOString()).slice(0, 10);
+      try {
+        await backfillAccountHistory(
+          admin,
+          account.id,
+          account.ticker,
+          Number(account.quantity),
+          startStr,
+        );
+      } catch {
+        // Non-fatal; current_price still drives today's value.
+      }
+    }
   } else if (accountCategory === "managed") {
     basePayload.broker = parseString(formData.get("broker")) ?? null;
     basePayload.initial_investment = parseAmount(formData.get("initial_investment")) ?? null;
@@ -286,7 +318,7 @@ export async function refreshStockPricesAction() {
 
   try {
     const { default: YahooFinance } = await import("yahoo-finance2");
-    const yf = new YahooFinance();
+    const yf = new YahooFinance({ suppressNotices: ["ripHistorical"] });
     const quotes = await yf.quote(uniqueTickers);
 
     const quoteMap = new Map<string, number>();
@@ -317,21 +349,36 @@ export async function refreshStockPricesAction() {
   redirect("/net-worth");
 }
 
+export type BackfillState = {
+  ok: boolean;
+  message?: string;
+  error?: string;
+};
+
 /**
  * Bulk-backfill balance snapshots for all accounts on a given date.
  * - Stock accounts: creates snapshots for EVERY trading day from targetDate
  *   to today using Yahoo Finance historical close prices.
  * - Bank/managed accounts: creates snapshots on targetDate, plus month-ends
  *   if include_monthly is checked.
+ *
+ * Returns a result (no redirect) so the UI can surface success/failure
+ * clearly instead of a 303 navigation.
  */
-export async function bulkBackfillAction(formData: FormData) {
+export async function bulkBackfillAction(
+  _prev: BackfillState,
+  formData: FormData,
+): Promise<BackfillState> {
   const { currentUser, admin } = await getCurrentUserOrRedirect();
+  if (!currentUser?.couple_id) {
+    return { ok: false, error: "Not signed in." };
+  }
 
   const targetDate = parseString(formData.get("target_date"));
   const includeMonthly = formData.get("include_monthly") === "true";
 
   if (!targetDate || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-    redirect("/net-worth?error=Enter%20a%20valid%20backfill%20date.");
+    return { ok: false, error: "Enter a valid backfill date." };
   }
 
   // Fetch all accounts for this couple
@@ -341,7 +388,7 @@ export async function bulkBackfillAction(formData: FormData) {
     .eq("couple_id", currentUser.couple_id);
 
   if (!accounts || accounts.length === 0) {
-    redirect("/net-worth?error=No%20accounts%20to%20backfill.");
+    return { ok: false, error: "No accounts to backfill." };
   }
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -366,35 +413,18 @@ export async function bulkBackfillAction(formData: FormData) {
   // --- Stock accounts: fetch ALL historical trading days from Yahoo Finance ---
   const stockAccts = accounts.filter((a) => a.ticker && a.quantity);
   const uniqueTickers = [...new Set(stockAccts.map((a) => a.ticker!))];
-  const historicalPricesByTicker = new Map<string, Map<string, number>>();
+  let historicalPricesByTicker = new Map<string, Map<string, number>>();
 
   if (stockAccts.length > 0 && uniqueTickers.length > 0) {
-    try {
-      const dayAfterToday = new Date();
-      dayAfterToday.setDate(dayAfterToday.getDate() + 1);
-      const dayAfterTodayStr = dayAfterToday.toISOString().slice(0, 10);
-
-      const { default: YahooFinance } = await import("yahoo-finance2");
-      const yf = new YahooFinance();
-
-      for (const ticker of uniqueTickers) {
-        const result = await yf.historical(ticker, {
-          period1: targetDate,
-          period2: dayAfterTodayStr,
-        });
-        const pricesByDate = new Map<string, number>();
-        for (const r of result) {
-          const d =
-            r.date instanceof Date
-              ? r.date.toISOString().slice(0, 10)
-              : new Date(r.date).toISOString().slice(0, 10);
-          pricesByDate.set(d, r.close ?? r.adjClose ?? 0);
-        }
-        historicalPricesByTicker.set(ticker, pricesByDate);
-      }
-    } catch {
-      redirect("/net-worth?error=Failed%20to%20fetch%20historical%20stock%20prices.%20The%20backfill%20needs%20Yahoo%20Finance%20data%20to%20continue.%20Try%20again%20later.");
-    }
+    const dayAfterToday = new Date();
+    dayAfterToday.setDate(dayAfterToday.getDate() + 1);
+    const period1Sec = Math.floor(new Date(targetDate).getTime() / 1000);
+    const period2Sec = Math.floor(dayAfterToday.getTime() / 1000);
+    historicalPricesByTicker = await fetchHistoricalClosePrices(
+      uniqueTickers,
+      period1Sec,
+      period2Sec,
+    );
   }
 
   // Delete any existing stock snapshots in the backfill range so we can
@@ -422,6 +452,7 @@ export async function bulkBackfillAction(formData: FormData) {
       const pricesByDate = historicalPricesByTicker.get(account.ticker);
 
       if (pricesByDate && pricesByDate.size > 0) {
+        let added = 0;
         for (const [dateStr, closePrice] of pricesByDate) {
           if (dateStr >= targetDate && dateStr <= todayStr) {
             const balance = closePrice * Number(account.quantity);
@@ -432,7 +463,20 @@ export async function bulkBackfillAction(formData: FormData) {
                 recorded_at: dateStr,
                 notes: `Historical close (${account.ticker})`,
               });
+              added++;
             }
+          }
+        }
+        if (added === 0) {
+          // Fallback — Yahoo returned no in-range prices; use current_price
+          const balance = Number(account.current_price ?? 0) * Number(account.quantity);
+          if (balance > 0) {
+            records.push({
+              account_id: account.id,
+              balance,
+              recorded_at: targetDate,
+              notes: `Backfilled to ${targetDate} (current price)`,
+            });
           }
         }
       } else {
@@ -489,7 +533,11 @@ export async function bulkBackfillAction(formData: FormData) {
   }
 
   if (records.length === 0) {
-    redirect("/net-worth?error=No%20balances%20found%20to%20backfill.");
+    return {
+      ok: false,
+      error:
+        "No balances found to backfill. Check that stock accounts have a ticker/quantity (and a current price as fallback) or that bank/managed accounts have a recorded balance.",
+    };
   }
 
   // Insert in batches
@@ -498,10 +546,42 @@ export async function bulkBackfillAction(formData: FormData) {
     const batch = records.slice(i, i + batchSize);
     const { error } = await admin.from("account_balance_history").insert(batch);
     if (error) {
-      redirect(`/net-worth?error=${encodeURIComponent(error.message)}`);
+      return { ok: false, error: error.message };
     }
   }
 
   revalidatePath("/net-worth");
-  redirect("/net-worth");
+  return {
+    ok: true,
+    message: `Backfilled ${records.length} snapshots from ${targetDate}.`,
+  };
+}
+
+/**
+ * Automatically backfill missing stock history for the current couple.  Called
+ * from the client after the page loads (server actions reliably persist,
+ * unlike side effects during a server-component render).  Returns a summary so
+ * the UI can surface failures instead of failing silently.
+ */
+export async function autoBackfillAction(): Promise<{
+  ok: boolean;
+  backfilled: number;
+  error?: string;
+}> {
+  const { currentUser, admin } = await getCurrentUserOrRedirect();
+  if (!currentUser?.couple_id) {
+    return { ok: false, backfilled: 0, error: "No couple found." };
+  }
+
+  try {
+    const count = await ensureStockHistory(admin, currentUser.couple_id);
+    revalidatePath("/net-worth");
+    return { ok: true, backfilled: count };
+  } catch (e) {
+    return {
+      ok: false,
+      backfilled: 0,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
 }

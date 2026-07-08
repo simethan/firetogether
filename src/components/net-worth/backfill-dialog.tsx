@@ -12,14 +12,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HistoryIcon } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { bulkBackfillAction, type BackfillState } from "@/app/net-worth/actions";
 
-export function BackfillDialog({
-  backfillAction,
-}: {
-  backfillAction: (formData: FormData) => Promise<void>;
-}) {
+const initialState: BackfillState = { ok: false };
+
+export function BackfillDialog() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [state, formAction] = useActionState(bulkBackfillAction, initialState);
+
+  useEffect(() => {
+    if (state.ok) {
+      router.refresh();
+      setOpen(false);
+    }
+  }, [state, router]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -35,46 +44,56 @@ export function BackfillDialog({
             the chart shows where you were.
           </DialogDescription>
         </DialogHeader>
-        <form action={backfillAction} onSubmit={() => setOpen(false)}>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="backfill-date">Starting date</Label>
-              <Input
-                id="backfill-date"
-                name="target_date"
-                type="date"
-                defaultValue="2025-05-01"
-                required
-              />
-              <p className="text-[10px] text-muted-foreground">
-                The earliest date you want the chart to show.
-              </p>
-            </div>
-
-            <label className="flex items-start gap-3 rounded-xl border border-border/50 bg-muted/20 p-3">
-              <input
-                type="checkbox"
-                name="include_monthly"
-                defaultChecked
-                className="mt-0.5 size-4 accent-foreground"
-              />
-              <div className="space-y-0.5">
-                <span className="text-sm font-medium text-foreground">
-                  Include month-end snapshots
-                </span>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Creates a snapshot on the last day of each month for bank
-                  and managed accounts, giving the chart a richer shape.
-                </p>
-              </div>
-            </label>
-
-            <p className="text-[10px] leading-relaxed text-muted-foreground/60">
-              Stock accounts use historical close prices from Yahoo Finance for
-              every trading day. Bank and managed accounts use the latest recorded
-              balance. You can edit or delete individual snapshots later.
+        <form action={formAction} className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="backfill-date">Starting date</Label>
+            <Input
+              id="backfill-date"
+              name="target_date"
+              type="date"
+              defaultValue="2025-05-01"
+              required
+            />
+            <p className="text-[10px] text-muted-foreground">
+              The earliest date you want the chart to show.
             </p>
           </div>
+
+          <label className="flex items-start gap-3 rounded-xl border border-border/50 bg-muted/20 p-3">
+            <input
+              type="checkbox"
+              name="include_monthly"
+              defaultChecked
+              className="mt-0.5 size-4 accent-foreground"
+            />
+            <div className="space-y-0.5">
+              <span className="text-sm font-medium text-foreground">
+                Include month-end snapshots
+              </span>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Creates a snapshot on the last day of each month for bank and
+                managed accounts, giving the chart a richer shape.
+              </p>
+            </div>
+          </label>
+
+          <p className="text-[10px] leading-relaxed text-muted-foreground/60">
+            Stock accounts use historical close prices from Yahoo Finance for
+            every trading day. Bank and managed accounts use the latest recorded
+            balance. You can edit or delete individual snapshots later.
+          </p>
+
+          {state.error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
+              {state.error}
+            </p>
+          )}
+          {state.ok && state.message && (
+            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-600 dark:text-emerald-400">
+              {state.message}
+            </p>
+          )}
+
           <div className="flex justify-end gap-2 border-t border-border/40 pt-4">
             <Button
               type="button"

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { BrandMark } from "@/components/brand/marks";
 import { cn } from "@/lib/utils";
 
 const primaryLinks = [
@@ -68,8 +69,8 @@ export function AppNavigation() {
             href="/dashboard"
             className="flex items-center gap-2.5 font-semibold tracking-tight text-foreground"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-lg">
-              🔥
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-ember">
+              <BrandMark className="h-5 w-5" />
             </span>
             <span className="text-base">FireTogether</span>
           </Link>

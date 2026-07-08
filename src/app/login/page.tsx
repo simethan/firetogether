@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { BrandMark } from "@/components/brand/marks";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -96,8 +97,8 @@ function AuthForm() {
     <div className="flex min-h-full flex-col items-center justify-center px-4 py-12">
       {/* Brand mark */}
       <Link href="/" className="mb-8 flex items-center gap-2.5 font-semibold tracking-tight text-foreground">
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-xl">
-          🔥
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-ember">
+          <BrandMark className="h-6 w-6" />
         </span>
         <span className="text-xl">FireTogether</span>
       </Link>
@@ -134,7 +135,7 @@ function AuthForm() {
             disabled={googleLoading || loading}
           >
             {googleLoading ? (
-              <span className="animate-spin mr-2">🔥</span>
+              <BrandMark className="mr-2 h-4 w-4 animate-spin text-ember" />
             ) : (
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path

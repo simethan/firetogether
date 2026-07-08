@@ -62,7 +62,10 @@ function sliceByRange(
       break;
   }
 
-  return data.filter((d) => new Date(d.date) >= start);
+  // Compare ISO date strings (yyyy-mm-dd) directly — lexicographic order
+  // matches chronological order and avoids UTC/local-edge bugs.
+  const startStr = start.toISOString().slice(0, 10);
+  return data.filter((d) => d.date >= startStr);
 }
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
@@ -129,7 +132,8 @@ function ChartTooltip({
       </p>
       <div className="mt-1 flex flex-col gap-0.5 text-[11px] tabular-nums">
         <span className={isUp ? "text-emerald-500" : "text-destructive"}>
-          From cost: {isUp ? "+" : ""}{costPct.toFixed(1)}%
+          From cost: {isUp ? "+" : ""}S$&thinsp;{formatRaw(pnl)} ({isUp ? "+" : ""}
+          {costPct.toFixed(1)}%)
         </span>
         <span className={timeReturnPct >= 0 ? "text-emerald-500" : "text-destructive"}>
           In period: {timeReturnPct >= 0 ? "+" : ""}{timeReturnPct.toFixed(1)}%
@@ -183,10 +187,12 @@ function TickerBadge({
 export function StockPerformanceChart({
   history,
   costBasis,
+  dividendTotal,
   tickers,
 }: {
   history: { date: string; total: number }[];
   costBasis: number;
+  dividendTotal?: number;
   tickers: {
     ticker: string;
     valueInSgd: number;
@@ -282,6 +288,9 @@ export function StockPerformanceChart({
               {isUp ? "▲" : "▼"}&nbsp;{isUp ? "+" : ""}
               {pnlPct.toFixed(1)}%
             </p>
+            <p className="text-[10px] tabular-nums text-muted-foreground">
+              {pnl >= 0 ? "+" : ""}S$&thinsp;{formatRaw(pnl)}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
@@ -295,6 +304,18 @@ export function StockPerformanceChart({
               {timeReturnPct >= 0 ? "▲" : "▼"}&nbsp;
               {timeReturnPct >= 0 ? "+" : ""}
               {timeReturnPct.toFixed(1)}%
+            </p>
+            <p className="text-[10px] tabular-nums text-muted-foreground">
+              {timeReturnPct >= 0 ? "+" : ""}S$&thinsp;
+              {formatRaw(currentValue - firstValue)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Dividends
+            </p>
+            <p className="text-sm tabular-nums text-sage">
+              S$&thinsp;{formatRaw(dividendTotal ?? 0)}
             </p>
           </div>
         </div>

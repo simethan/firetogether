@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -10,9 +9,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CategoryIcon } from "@/components/categories/category-icon";
 import { CategoryFilter } from "@/components/expenses/category-filter";
 import { CoupleBalanceTimeline } from "@/components/dashboard/couple-balance-timeline";
+import { EnvelopeShelf } from "@/components/dashboard/envelope-shelf";
+import { SectionHeader } from "@/components/dashboard/section-header";
 import { SpendMapSection } from "@/components/dashboard/spend-map-section";
 import { SpendingInsights } from "@/components/dashboard/spending-insights";
 import { MonthSelector } from "@/components/dashboard/month-selector";
@@ -249,25 +249,46 @@ export default async function DashboardPage({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Hero section */}
-      <section className="relative overflow-hidden rounded-[2rem] bg-card p-5 sm:p-7 lg:p-8">
-        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-card p-6 sm:p-8 lg:p-10">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
-            <MonthSelector currentMonth={currentMonth} />
-            <div className="space-y-2">
-              <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                Monthly spend
-              </p>
-              <div className="flex items-center gap-4">
-                <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                  {formatCurrency(summary.totalSpent)}
-                </h1>
-                <SpendingTrendsSparkline trends={trends} />
-              </div>
+            <div className="flex items-center gap-3">
+              <MonthSelector currentMonth={currentMonth} />
             </div>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              A clean read on this month: what the couple spent, what you paid,
-              and how shared expenses are split.
-            </p>
+            <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-taupe">
+              Together · {monthLabel}
+            </div>
+            <div className="flex items-end gap-3">
+              <h1 className="font-heading text-4xl font-semibold tracking-tight text-foreground tabular-nums break-words sm:text-5xl lg:text-7xl">
+                {formatCurrency(summary.totalSpent)}
+              </h1>
+              <SpendingTrendsSparkline trends={trends} />
+            </div>
+            {/* The merge: two streams becoming one pool */}
+            <svg
+              aria-hidden
+              className="h-5 w-28 text-ember/70"
+              viewBox="0 0 120 20"
+              fill="none"
+            >
+              <path
+                d="M2 2 C40 2 44 18 60 18"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path
+                d="M118 2 C80 2 76 18 60 18"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="font-mono text-xs tabular-nums text-taupe">
+              You {formatCurrency(myPaidThisMonth)} · Partner{" "}
+              {formatCurrency(summary.totalSpent - myPaidThisMonth)} · Shared{" "}
+              {formatCurrency(summary.sharedSpent)}
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -292,19 +313,7 @@ export default async function DashboardPage({
       </section>
 
       {/* KPI cards */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription>Overall spend</CardDescription>
-            <CardTitle className="text-2xl font-semibold tabular-nums">
-              {formatCurrency(summary.totalSpent)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            All expenses logged in {monthLabel}.
-          </CardContent>
-        </Card>
-
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Card size="sm">
           <CardHeader>
             <CardDescription>Paid by me</CardDescription>
@@ -346,24 +355,16 @@ export default async function DashboardPage({
       <section className="grid gap-5 lg:grid-cols-[1.45fr_0.9fr]">
         <Card>
           <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-xl font-semibold">
-                  Spend map
-                </CardTitle>
-                <CardDescription>
-                  {categoryFilter
-                    ? `Filtered view for "${categoryById.get(categoryFilter)?.name ?? "selected category"}" this month.`
-                    : "Category totals for this month, including uncategorized spending. Click a category to see its history."}
-                </CardDescription>
-              </div>
-              <Link
-                href="/expenses"
-                className="shrink-0 text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Open expense details →
-              </Link>
-            </div>
+            <SectionHeader
+              eyebrow="Spend map"
+              title="Spend map"
+              description={
+                categoryFilter
+                  ? `Filtered view for "${categoryById.get(categoryFilter)?.name ?? "selected category"}" this month.`
+                  : "Category totals for this month, including uncategorized spending. Click a category to see its history."
+              }
+              action={{ href: "/expenses", label: "Open →" }}
+            />
           </CardHeader>
           <CardContent className="space-y-4">
             <CategoryFilter
@@ -387,94 +388,15 @@ export default async function DashboardPage({
 
         <div className="grid gap-5">
           <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="text-xl font-semibold">Envelopes</CardTitle>
-                  <CardDescription>
-                    Funded envelopes and ready-to-assign income.
-                  </CardDescription>
-                </div>
-                <Link
-                  href="/budgets"
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Manage →
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {envelopes.length > 0 ? (
-                <>
-                  <div className="flex items-end justify-between gap-4">
-                    <div>
-                      <div className="text-3xl font-semibold tabular-nums">
-                        {formatCurrency(readyToAssign)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Ready to assign
-                      </div>
-                    </div>
-                    <Badge
-                      variant={
-                        readyToAssign < 0 ? "destructive" : "secondary"
-                      }
-                    >
-                      {readyToAssign < 0
-                        ? "Over assigned"
-                        : `${envelopes.length} envelope${envelopes.length === 1 ? "" : "s"}`}
-                    </Badge>
-                  </div>
-                  <Progress
-                    value={
-                      totalIncome > 0
-                        ? Math.min(100, Math.round((totalFunded / totalIncome) * 100))
-                        : 0
-                    }
-                    className={
-                      readyToAssign < 0
-                        ? "[&>div]:bg-destructive"
-                        : "[&>div]:bg-emerald-500"
-                    }
-                  />
-                  <div className="space-y-2">
-                    {envelopes.slice(0, 3).map((env) => {
-                      const pct = env.funded > 0
-                        ? Math.min(100, Math.round((env.spent / env.funded) * 100))
-                        : 0;
-                      return (
-                        <div key={env.budgetId} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="flex items-center gap-1.5 truncate text-foreground">
-                            {env.categoryName}
-                            {env.isShared ? (
-                              <Badge variant="outline" className="text-[9px] font-normal text-muted-foreground px-1 py-0 leading-3">S</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[9px] font-normal text-muted-foreground px-1 py-0 leading-3">I</Badge>
-                            )}
-                          </span>
-                          <span className="font-mono tabular-nums text-muted-foreground">
-                            {formatCurrency(env.spent)} / {formatCurrency(env.funded)}
-                            {pct > 0 ? ` (${pct}%)` : ""}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {envelopes.length > 3 && (
-                      <div className="text-xs text-muted-foreground">
-                        +{envelopes.length - 3} more envelope{envelopes.length - 3 === 1 ? "" : "s"}
-                      </div>
-                    )}
-                  </div>
-                  {overdrawnCount > 0 && (
-                    <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      {overdrawnCount} overdrawn — cover from budgets page
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-                  No envelopes set for {monthLabel}. Fund categories to track
-                  spending against budgets.
+            <CardContent className="pt-6">
+              <EnvelopeShelf
+                envelopes={envelopes}
+                readyToAssign={readyToAssign}
+              />
+              {overdrawnCount > 0 && (
+                <div className="mt-4 rounded-xl border border-clay/20 bg-clay/5 px-3 py-2 text-xs text-clay">
+                  {overdrawnCount} envelope{overdrawnCount === 1 ? "" : "s"}{" "}
+                  overdrawn — cover from the budgets page
                 </div>
               )}
             </CardContent>
@@ -482,20 +404,12 @@ export default async function DashboardPage({
 
           <Card>
             <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="text-xl font-semibold">Goals</CardTitle>
-                  <CardDescription>
-                    Average progress across active goals.
-                  </CardDescription>
-                </div>
-                <Link
-                  href="/goals"
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Edit →
-                </Link>
-              </div>
+              <SectionHeader
+                eyebrow="Goals"
+                title="Goals"
+                description="Average progress across active goals."
+                action={{ href: "/goals", label: "Edit →" }}
+              />
             </CardHeader>
             <CardContent className="space-y-4">
               {typedGoals.length > 0 ? (
@@ -546,17 +460,11 @@ export default async function DashboardPage({
       <section>
         <Card>
           <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-xl font-semibold">
-                  Couple balance
-                </CardTitle>
-                <CardDescription>
-                  How spending and shared expenses have been distributed between
-                  partners over time.
-                </CardDescription>
-              </div>
-            </div>
+            <SectionHeader
+              eyebrow="Couple balance"
+              title="Couple balance"
+              description="How spending and shared expenses have been distributed between partners over time."
+            />
           </CardHeader>
           <CardContent>
             <CoupleBalanceTimeline data={balanceTimeline} />
@@ -568,12 +476,11 @@ export default async function DashboardPage({
       <section className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">
-              Spending insights
-            </CardTitle>
-            <CardDescription>
-              Month-over-month changes in your spending patterns.
-            </CardDescription>
+            <SectionHeader
+              eyebrow="Insights"
+              title="Spending insights"
+              description="Month-over-month changes in your spending patterns."
+            />
           </CardHeader>
           <CardContent>
             <SpendingInsights insights={insights} />
@@ -582,12 +489,11 @@ export default async function DashboardPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">
-              Recurring
-            </CardTitle>
-            <CardDescription>
-              Expenses that appear regularly across months.
-            </CardDescription>
+            <SectionHeader
+              eyebrow="Recurring"
+              title="Recurring"
+              description="Expenses that appear regularly across months."
+            />
           </CardHeader>
           <CardContent>
             <RecurringExpenses recurring={recurring} scheduled={scheduledDisplays} />
@@ -599,15 +505,12 @@ export default async function DashboardPage({
       <section className="grid gap-5 lg:grid-cols-[1fr_0.72fr]">
         <Card>
           <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="text-xl font-semibold">
-                  Recent activity
-                </CardTitle>
-                <CardDescription>Latest expenses this month.</CardDescription>
-              </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.2em] text-taupe">
+                Ledger
+              </h2>
               <Link
-                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                className="font-mono text-[11px] text-ember hover:underline"
                 href="/expenses"
               >
                 See all →
@@ -616,7 +519,7 @@ export default async function DashboardPage({
           </CardHeader>
           <CardContent>
             {recentExpenses.length > 0 ? (
-              <div className="divide-y divide-border/70">
+              <ul className="font-mono text-sm">
                 {recentExpenses.map((expense) => {
                   const category = expense.category_id
                     ? categoryById.get(expense.category_id)
@@ -624,48 +527,39 @@ export default async function DashboardPage({
                   const payer = expense.user_id
                     ? userById.get(expense.user_id)
                     : null;
+                  const payerName =
+                    payer?.id === user.id
+                      ? "You"
+                      : (payer?.name ?? "Unknown");
 
                   return (
-                    <div
+                    <li
                       key={expense.id}
-                      className="grid gap-3 py-3 first:pt-0 last:pb-0 sm:grid-cols-[1fr_auto] sm:items-center"
+                      className="grid grid-cols-[auto_1fr_auto] items-baseline gap-3 border-b border-border/60 py-2.5 last:border-0"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <CategoryIcon icon={category?.icon} fallback="💸" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate font-medium text-foreground">
-                            {expense.description ?? category?.name ?? "Expense"}
-                          </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                            <span>{formatShortDate(expense.expense_date)}</span>
-                            <span className="opacity-40">·</span>
-                            <span>
-                              {payer?.id === user.id
-                                ? "You"
-                                : (payer?.name ?? "Unknown")}
-                            </span>
-                            <span className="opacity-40">·</span>
-                            <span>{expense.split_type}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="font-semibold tabular-nums text-foreground sm:text-right">
+                      <span className="tabular-nums text-taupe">
+                        {formatShortDate(expense.expense_date)}
+                      </span>
+                      <span className="min-w-0 truncate text-foreground">
+                        <span className="font-sans">
+                          {expense.description ?? category?.name ?? "Expense"}
+                        </span>
+                        <span className="text-taupe"> · {payerName}</span>
+                      </span>
+                      <span className="tabular-nums text-foreground">
                         {formatCurrency(Number(expense.amount))}
-                      </div>
-                    </div>
+                      </span>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             ) : (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/20 py-8 text-center">
-                <span className="text-4xl">🧾</span>
                 <p className="text-sm text-muted-foreground">
-                  No expenses recorded this month yet.
+                  Nothing logged this month yet.
                 </p>
                 <Link
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  className="font-mono text-[11px] text-ember hover:underline"
                   href="/expenses/new"
                 >
                   Add an expense →
@@ -677,52 +571,47 @@ export default async function DashboardPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">
-              Quick actions
-            </CardTitle>
-            <CardDescription>
-              Keep the dashboard focused. Details live on their own pages.
-            </CardDescription>
+            <SectionHeader eyebrow="Actions" title="Quick actions" />
           </CardHeader>
-          <CardContent className="grid gap-2">
+          <CardContent className="grid grid-cols-2 gap-2">
             <Link
-              className="rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              className="col-span-2 rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               href="/expenses/new"
             >
               Add expense
             </Link>
             <Link
-              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="rounded-xl border border-border bg-background px-3 py-2.5 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted"
               href="/expenses"
             >
-              Review expense details
+              Expenses
             </Link>
             <Link
-              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="rounded-xl border border-border bg-background px-3 py-2.5 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted"
               href="/income"
             >
-              Record income
+              Income
             </Link>
             <Link
-              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="rounded-xl border border-border bg-background px-3 py-2.5 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted"
               href="/budgets"
             >
-              Manage budgets
+              Budgets
             </Link>
             <Link
-              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="rounded-xl border border-border bg-background px-3 py-2.5 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted"
               href="/scheduled"
             >
-              Scheduled transactions
+              Scheduled
             </Link>
             <Link
-              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="col-span-2 rounded-xl border border-border bg-background px-3 py-2.5 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted"
               href="/goals"
             >
-              Update goals
+              Goals
             </Link>
             <Link
-              className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className="col-span-2 rounded-xl border border-border bg-background px-3 py-2.5 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted"
               href="/year-in-review"
             >
               Year in Review →
