@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions";
 import {
   backfillAccountHistory,
+  captureTodaysSnapshots,
   ensureStockHistory,
   fetchHistoricalClosePrices,
 } from "@/lib/net-worth-backfill";
@@ -558,29 +559,60 @@ export async function bulkBackfillAction(
 }
 
 /**
- * Automatically backfill missing stock history for the current couple.  Called
- * from the client after the page loads (server actions reliably persist,
- * unlike side effects during a server-component render).  Returns a summary so
- * the UI can surface failures instead of failing silently.
+ * Automatically backfill missing stock history AND capture today's net-worth
+ * snapshots for the current couple.  Called from the client after the page
+ * loads (server actions reliably persist, unlike side effects during a
+ * server-component render).  Returns a summary so the UI can surface failures
+ * instead of failing silently.
  */
 export async function autoBackfillAction(): Promise<{
   ok: boolean;
   backfilled: number;
+  captured: number;
   error?: string;
 }> {
   const { currentUser, admin } = await getCurrentUserOrRedirect();
   if (!currentUser?.couple_id) {
-    return { ok: false, backfilled: 0, error: "No couple found." };
+    return { ok: false, backfilled: 0, captured: 0, error: "No couple found." };
   }
 
   try {
-    const count = await ensureStockHistory(admin, currentUser.couple_id);
+    const backfilled = await ensureStockHistory(admin, currentUser.couple_id);
+    const captured = await captureTodaysSnapshots(admin, currentUser.couple_id);
     revalidatePath("/net-worth");
-    return { ok: true, backfilled: count };
+    return { ok: true, backfilled, captured };
   } catch (e) {
     return {
       ok: false,
       backfilled: 0,
+      captured: 0,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+/**
+ * Manually capture "today" snapshots for every account so the net-worth-over-
+ * time chart gets a fresh point on demand.
+ */
+export async function captureSnapshotAction(): Promise<{
+  ok: boolean;
+  captured: number;
+  error?: string;
+}> {
+  const { currentUser, admin } = await getCurrentUserOrRedirect();
+  if (!currentUser?.couple_id) {
+    return { ok: false, captured: 0, error: "No couple found." };
+  }
+
+  try {
+    const captured = await captureTodaysSnapshots(admin, currentUser.couple_id);
+    revalidatePath("/net-worth");
+    return { ok: true, captured };
+  } catch (e) {
+    return {
+      ok: false,
+      captured: 0,
       error: e instanceof Error ? e.message : String(e),
     };
   }

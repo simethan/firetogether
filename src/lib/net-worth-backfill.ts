@@ -150,6 +150,63 @@ export async function backfillAccountHistory(
 const AUTO_BACKFILL_LOOKBACK_DAYS = 365 * 2;
 
 /**
+ * Refresh current prices for every stock account belonging to a couple, using
+ * Yahoo Finance quotes. Updates current_price and last_price_fetched_at on
+ * each matching account. Returns the number of accounts successfully updated.
+ * Failures are skipped so one bad ticker doesn't abort the batch.
+ */
+export async function refreshStockPricesForCouple(
+  admin: SupabaseClient,
+  coupleId: string,
+): Promise<number> {
+  const { data: stockAccounts } = await admin
+    .from("net_worth_accounts")
+    .select("id, ticker, current_price")
+    .eq("couple_id", coupleId)
+    .not("ticker", "is", null);
+
+  if (!stockAccounts || stockAccounts.length === 0) return 0;
+
+  const uniqueTickers = [...new Set(stockAccounts.map((a) => a.ticker!))];
+
+  const quoteMap = new Map<string, number>();
+  try {
+    const { default: YahooFinance } = await import("yahoo-finance2");
+    const yf = new YahooFinance({ suppressNotices: ["ripHistorical"] });
+    const quotes = await yf.quote(uniqueTickers);
+
+    const results = Array.isArray(quotes) ? quotes : [quotes];
+    for (const q of results) {
+      if (q.regularMarketPrice && q.symbol) {
+        quoteMap.set(q.symbol, q.regularMarketPrice);
+      }
+    }
+  } catch (e) {
+    console.error(
+      `Price refresh failed for couple ${coupleId}:`,
+      e instanceof Error ? e.message : e,
+    );
+    return 0;
+  }
+
+  let updated = 0;
+  for (const account of stockAccounts) {
+    const price = quoteMap.get(account.ticker!);
+    if (!price) continue;
+    const { error } = await admin
+      .from("net_worth_accounts")
+      .update({
+        current_price: price,
+        last_price_fetched_at: new Date().toISOString(),
+      })
+      .eq("id", account.id);
+    if (!error) updated += 1;
+  }
+
+  return updated;
+}
+
+/**
  * Ensure every stock account for the couple has historical snapshots.  For
  * accounts that are missing history (no snapshots, or snapshots that don't
  * reach far enough back), backfill them automatically — so the portfolio chart
@@ -210,4 +267,88 @@ export async function ensureStockHistory(
   }
 
   return backfilled;
+}
+
+/**
+ * Capture "today" snapshots for every account so the net-worth-over-time
+ * chart has a fresh point each day.  Stocks use current_price × quantity;
+ * bank/managed accounts use their latest recorded balance.  Idempotent: if a
+ * snapshot already exists for today it is replaced (upsert), so re-running
+ * just refreshes today's value.
+ */
+export async function captureTodaysSnapshots(
+  admin: SupabaseClient,
+  coupleId: string,
+): Promise<number> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const { data: accounts } = await admin
+    .from("net_worth_accounts")
+    .select("id, ticker, quantity, current_price, account_category, include_in_net_worth")
+    .eq("couple_id", coupleId);
+
+  if (!accounts || accounts.length === 0) return 0;
+
+  const accountIds = (accounts as NetWorthAccount[]).map((a) => a.id);
+
+  // Latest recorded balance per account (bank/managed, or any non-stock).
+  const { data: snapshots } = await admin
+    .from("account_balance_history")
+    .select("account_id, balance, recorded_at")
+    .in("account_id", accountIds)
+    .order("recorded_at", { ascending: false });
+
+  const latestByAccount = new Map<string, number>();
+  if (snapshots) {
+    for (const s of snapshots) {
+      if (!latestByAccount.has(s.account_id)) {
+        latestByAccount.set(s.account_id, Number(s.balance));
+      }
+    }
+  }
+
+  const records: {
+    account_id: string;
+    balance: number;
+    recorded_at: string;
+    notes: string;
+  }[] = [];
+
+  for (const a of accounts as NetWorthAccount[]) {
+    if (a.include_in_net_worth === false) continue;
+
+    let value: number | null = null;
+    if (a.ticker && a.current_price && a.quantity) {
+      value = Number(a.current_price) * Number(a.quantity);
+    } else {
+      const latest = latestByAccount.get(a.id);
+      value = latest != null ? latest : null;
+    }
+    if (value == null || value <= 0) continue;
+
+    records.push({
+      account_id: a.id,
+      balance: Math.round(value * 100) / 100,
+      recorded_at: todayStr,
+      notes: "Daily snapshot",
+    });
+  }
+
+  if (records.length === 0) return 0;
+
+  // Upsert: drop any snapshot already recorded today, then insert fresh values.
+  await admin
+    .from("account_balance_history")
+    .delete()
+    .in("account_id", accountIds)
+    .eq("recorded_at", todayStr);
+
+  for (let i = 0; i < records.length; i += 200) {
+    const { error } = await admin
+      .from("account_balance_history")
+      .insert(records.slice(i, i + 200));
+    if (error) throw new Error(error.message);
+  }
+
+  return records.length;
 }

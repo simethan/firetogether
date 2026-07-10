@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StockPerformanceChart } from "@/components/net-worth/stock-performance-chart";
+import { NetWorthHistoryChart } from "@/components/net-worth/net-worth-history-chart";
 import { BackfillDialog } from "@/components/net-worth/backfill-dialog";
+import { TakeSnapshotButton } from "@/components/net-worth/take-snapshot-button";
 import { AddAccountForm } from "@/components/net-worth/add-account-form";
 import { AccountGlyph } from "@/components/brand/marks";
 import { createServiceClient } from "@/lib/supabase/admin";
@@ -20,6 +22,7 @@ import { toSgd, formatWithCurrency } from "@/lib/fx";
 import { fetchExchangeRates } from "@/lib/fx-rates";
 import {
   computeNetWorthTotal,
+  computeNetWorthHistory,
   computeStockPnL,
   computeStockValue,
   computeStockCost,
@@ -483,6 +486,9 @@ export default async function NetWorthPage({
   const stockAccounts = getAccountsByCategory(typedAccounts, "investment");
   const managedAccounts = getAccountsByCategory(typedAccounts, "managed");
 
+  // Net-worth-over-time history (all accounts, in SGD) for the growth chart
+  const netWorthHistory = computeNetWorthHistory(typedAccounts, typedSnapshots, fxRates);
+
   // Stock-only history & per-ticker data for the stock performance chart
   const stockHistory = computeStockHistory(typedAccounts, typedSnapshots, fxRates);
   const stockCostBasis = computeStockCost(typedAccounts, fxRates);
@@ -595,6 +601,7 @@ export default async function NetWorthPage({
 
           <div className="flex flex-wrap gap-2">
             <BackfillDialog />
+            <TakeSnapshotButton />
             <form action={refreshStockPricesAction}>
               <Button type="submit" variant="outline" size="sm">
                 Refresh prices
@@ -603,6 +610,11 @@ export default async function NetWorthPage({
           </div>
         </div>
 
+      </section>
+
+      {/* ─── Net Worth Over Time (growth chart) ─── */}
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-card p-6 sm:p-8 lg:p-10">
+        <NetWorthHistoryChart history={netWorthHistory} />
       </section>
 
       {/* ─── Stock Performance Chart ─── */}
