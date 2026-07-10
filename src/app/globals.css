@@ -96,6 +96,11 @@
   --sidebar-accent-foreground: #211c16;
   --sidebar-border: #ece3d2;
   --sidebar-ring: var(--ember);
+
+  /* Depth — material weight grows with surface size (Apple §12) */
+  --shadow-sm: 0 1px 2px rgb(33 28 22 / 0.06);
+  --shadow-card: 0 1px 2px rgb(33 28 22 / 0.04), 0 10px 24px -14px rgb(33 28 22 / 0.16);
+  --shadow-float: 0 4px 12px rgb(33 28 22 / 0.08), 0 20px 44px -18px rgb(33 28 22 / 0.22);
 }
 
 @keyframes slide-in {
@@ -151,6 +156,11 @@
   --sidebar-accent-foreground: #f3ead9;
   --sidebar-border: #3a3128;
   --sidebar-ring: var(--ember);
+
+  /* Depth — softer, lower-contrast shadows on the dark desk */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 24px -14px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 4px 12px rgb(0 0 0 / 0.4), 0 20px 44px -18px rgb(0 0 0 / 0.6);
 }
 
 @layer base {
@@ -159,9 +169,21 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* comfortable default leading for body copy (Apple §15) */
+    line-height: 1.5;
   }
   html {
     @apply font-sans;
+  }
+  /* Size-specific tracking: tighten as text grows, leave body near 0
+     (a single fixed letter-spacing is wrong at some size — Apple §15) */
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  h4, h5, h6 {
+    letter-spacing: -0.01em;
+    line-height: 1.2;
   }
 }
 
@@ -173,6 +195,35 @@
   }
 }
 
+/* Display headings — large serif that grows tighter and tighter (Apple §15) */
+@utility text-display {
+  font-family: var(--font-heading);
+  font-optical-sizing: auto;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+/* Translucent floating material — the app's chrome sits above content
+   as a real layer, not an opaque strip (Apple §12) */
+@utility material {
+  background-color: color-mix(in oklab, var(--card) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: var(--shadow-float);
+}
+
+/* Sonner toasts read as a light translucent material, not a flat box */
+.cn-toast {
+  background-color: color-mix(in oklab, var(--popover) 80%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent) !important;
+  box-shadow: var(--shadow-float) !important;
+  color: var(--popover-foreground) !important;
+}
+
+/* Reduced motion — keep gentle opacity cross-fades & status feedback,
+   but drop the vestibular load (slides, springs, parallax, spins) (Apple §14) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -180,6 +231,36 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow !important;
     scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation: none !important;
+  }
+}
+
+/* Reduced transparency — frost the glass into a solid surface (Apple §14) */
+@media (prefers-reduced-transparency: reduce) {
+  .material,
+  .cn-toast {
+    background-color: var(--card) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Increased contrast — near-solid surfaces with a defined border (Apple §14) */
+@media (prefers-contrast: more) {
+  :root {
+    --border: color-mix(in oklab, var(--foreground) 35%, var(--border));
+    --input: color-mix(in oklab, var(--foreground) 35%, var(--input));
+    --muted-foreground: color-mix(in oklab, var(--foreground) 75%, var(--muted-foreground));
+  }
+  * {
+    text-shadow: none !important;
   }
 }

@@ -61,7 +61,7 @@ export function AppNavigation() {
       <div className="hidden w-60 shrink-0 md:block" aria-hidden="true" />
 
       {/* Desktop sidebar — visible from md breakpoint */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-60 flex-col border-r border-border/70 bg-card md:flex">
+      <aside className="material fixed left-0 top-0 z-40 hidden h-full w-60 flex-col border-r border-border/40 md:flex">
 
         {/* Brand */}
         <div className="flex h-16 shrink-0 items-center gap-2.5 px-5">
@@ -144,7 +144,7 @@ export function AppNavigation() {
       </aside>
 
       {/* Mobile bottom tab bar — hidden from md breakpoint */}
-      <nav aria-label="Mobile" className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
+      <nav aria-label="Mobile" className="material fixed inset-x-0 bottom-0 z-50 border-t border-border/60 md:hidden">
 
         <div className="flex gap-1 overflow-x-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-2 scrollbar-none">
           {[...primaryLinks, ...secondaryLinks].map((item) => {
