@@ -32,12 +32,18 @@ export default async function EditExpensePage({
 
   const { data: expense } = await admin
     .from("expenses")
-    .select("id, couple_id, user_id, category_id, payee_id, amount, description, expense_date, split_type, custom_ratio, created_at")
+    .select("id, couple_id, user_id, category_id, payee_id, amount, description, expense_date, split_type, custom_ratio, created_at, group_expense_id, group_id")
     .eq("id", id)
     .maybeSingle();
 
   if (!expense || expense.couple_id !== currentUser.couple_id) {
     redirect("/expenses");
+  }
+
+  // Group shares are owned by the group; edit them there so the next sync doesn't undo the change.
+  if (expense.group_expense_id) {
+    const { data: group } = await admin.from("split_groups").select("code").eq("id", expense.group_id).maybeSingle();
+    redirect(group ? `/groups/${group.code}/expenses/${expense.group_expense_id}` : "/groups");
   }
 
   const { data: categories } = await admin
