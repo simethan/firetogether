@@ -1,0 +1,336 @@
+{
+  "source": "SmartSplit group (anonymised), captured 2026-09-26",
+  "baseCurrency": "SGD",
+  "simplify": true,
+  "expenses": [
+    {
+      "id": "e1",
+      "date": "2026-09-18",
+      "currency": "SGD",
+      "total": 14.5,
+      "category": "Food & Dining",
+      "paidByMemberId": "m2",
+      "items": [
+        {
+          "id": "e1i1",
+          "paidByMemberId": "m2",
+          "category": "Food & Dining",
+          "lineTotal": 14.5,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 4.83
+            },
+            {
+              "memberId": "m1",
+              "amount": 4.83
+            },
+            {
+              "memberId": "m5",
+              "amount": 4.84
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e2",
+      "date": "2026-09-18",
+      "currency": "SGD",
+      "total": 6.3,
+      "category": "Food & Dining",
+      "paidByMemberId": "m2",
+      "items": [
+        {
+          "id": "e2i1",
+          "paidByMemberId": "m2",
+          "category": "Food & Dining",
+          "lineTotal": 6.3,
+          "assignments": [
+            {
+              "memberId": "m5",
+              "amount": 6.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e3",
+      "date": "2026-09-18",
+      "currency": "SGD",
+      "total": 8.6,
+      "category": "Food & Dining",
+      "paidByMemberId": "m2",
+      "items": [
+        {
+          "id": "e3i1",
+          "paidByMemberId": "m2",
+          "category": "Food & Dining",
+          "lineTotal": 4.7,
+          "assignments": [
+            {
+              "memberId": "m1",
+              "amount": 4.7
+            }
+          ]
+        },
+        {
+          "id": "e3i2",
+          "paidByMemberId": "m2",
+          "category": "Food & Dining",
+          "lineTotal": 3.9,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 3.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e4",
+      "date": "2026-09-18",
+      "currency": "SGD",
+      "total": 22.4,
+      "category": "Food & Dining",
+      "paidByMemberId": null,
+      "items": [
+        {
+          "id": "e4i1",
+          "paidByMemberId": "m1",
+          "category": "Miscellaneous",
+          "lineTotal": 22.4,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 7.47
+            },
+            {
+              "memberId": "m1",
+              "amount": 7.47
+            },
+            {
+              "memberId": "m5",
+              "amount": 7.47
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e5",
+      "date": "2026-09-25",
+      "currency": "SGD",
+      "total": 17.38,
+      "category": "Food & Dining",
+      "paidByMemberId": "m2",
+      "items": [
+        {
+          "id": "e5i1",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 15.8,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 5.8
+            },
+            {
+              "memberId": "m5",
+              "amount": 5.8
+            },
+            {
+              "memberId": "m1",
+              "amount": 5.78
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e6",
+      "date": "2026-09-25",
+      "currency": "SGD",
+      "total": 68.7,
+      "category": "Food & Dining",
+      "paidByMemberId": "m7",
+      "items": [
+        {
+          "id": "e6i1",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 11.95,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 2.99
+            },
+            {
+              "memberId": "m6",
+              "amount": 2.99
+            },
+            {
+              "memberId": "m5",
+              "amount": 2.99
+            },
+            {
+              "memberId": "m1",
+              "amount": 2.98
+            }
+          ]
+        },
+        {
+          "id": "e6i2",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 12.95,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 3.24
+            },
+            {
+              "memberId": "m5",
+              "amount": 3.24
+            },
+            {
+              "memberId": "m6",
+              "amount": 3.24
+            },
+            {
+              "memberId": "m1",
+              "amount": 3.23
+            }
+          ]
+        },
+        {
+          "id": "e6i3",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 10.45,
+          "assignments": [
+            {
+              "memberId": "m5",
+              "amount": 10.45
+            }
+          ]
+        },
+        {
+          "id": "e6i4",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 10.45,
+          "assignments": [
+            {
+              "memberId": "m6",
+              "amount": 10.45
+            }
+          ]
+        },
+        {
+          "id": "e6i5",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 10.45,
+          "assignments": [
+            {
+              "memberId": "m1",
+              "amount": 10.45
+            }
+          ]
+        },
+        {
+          "id": "e6i6",
+          "paidByMemberId": "m1",
+          "category": "Food & Dining",
+          "lineTotal": 12.45,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 12.45
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e7",
+      "date": "2026-09-25",
+      "currency": "SGD",
+      "total": 24.0,
+      "category": "Food & Dining",
+      "paidByMemberId": null,
+      "items": [
+        {
+          "id": "e7i1",
+          "paidByMemberId": "m5",
+          "category": "Miscellaneous",
+          "lineTotal": 24.0,
+          "assignments": [
+            {
+              "memberId": "m2",
+              "amount": 8.0
+            },
+            {
+              "memberId": "m5",
+              "amount": 8.0
+            },
+            {
+              "memberId": "m1",
+              "amount": 8.0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "payments": [
+    {
+      "id": "p1",
+      "payerMemberId": "m5",
+      "receiverMemberId": "m2",
+      "amount": 13.2,
+      "currency": "SGD",
+      "status": "approved",
+      "createdAt": "2026-09-20T04:54:57.144Z"
+    },
+    {
+      "id": "p2",
+      "payerMemberId": "m5",
+      "receiverMemberId": "m1",
+      "amount": 5.41,
+      "currency": "SGD",
+      "status": "approved",
+      "createdAt": "2026-09-20T04:55:03.381Z"
+    }
+  ],
+  "expected": {
+    "totalSpend": 161.88,
+    "outstandingDebt": 55.64,
+    "balances": {
+      "m1": 55.64,
+      "m2": -32.48,
+      "m5": -6.48,
+      "m6": -16.68
+    },
+    "settlements": [
+      {
+        "from": "m2",
+        "to": "m1",
+        "amount": 32.48
+      },
+      {
+        "from": "m6",
+        "to": "m1",
+        "amount": 16.68
+      },
+      {
+        "from": "m5",
+        "to": "m1",
+        "amount": 6.48
+      }
+    ]
+  }
+}

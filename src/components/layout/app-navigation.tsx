@@ -13,6 +13,7 @@ import {
   ReceiptText,
   Smartphone,
   Tags,
+  Users,
   Wallet,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ const primaryLinks = [
   { href: "/net-worth", label: "Net Worth", icon: Landmark },
   { href: "/budgets", label: "Budgets", icon: Calculator },
   { href: "/goals", label: "Goals", icon: Goal },
+  { href: "/groups", label: "Groups", icon: Users },
 ];
 
 const secondaryLinks = [

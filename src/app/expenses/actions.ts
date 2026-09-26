@@ -56,12 +56,16 @@ export async function updateExpenseAction(
   // Verify the expense belongs to this couple
   const { data: existing } = await admin
     .from("expenses")
-    .select("id, couple_id")
+    .select("id, couple_id, group_expense_id")
     .eq("id", expenseId)
     .maybeSingle();
 
   if (!existing || existing.couple_id !== currentUser.couple_id) {
     return { error: "Expense not found or you don't have permission to edit it." };
+  }
+
+  if (existing.group_expense_id) {
+    return { error: "This is your share of a group expense. Edit it in the group instead." };
   }
 
   if (categoryId) {
@@ -112,12 +116,16 @@ export async function deleteExpenseAction(
   // Verify the expense belongs to this couple
   const { data: existing } = await admin
     .from("expenses")
-    .select("id, couple_id")
+    .select("id, couple_id, group_expense_id")
     .eq("id", expenseId)
     .maybeSingle();
 
   if (!existing || existing.couple_id !== currentUser.couple_id) {
     return { error: "Expense not found or you don't have permission to delete it." };
+  }
+
+  if (existing.group_expense_id) {
+    return { error: "This is your share of a group expense. Remove yourself from it in the group instead." };
   }
 
   const { error: deleteError } = await admin

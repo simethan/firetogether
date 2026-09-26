@@ -1,10 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+import { safeNextPath } from "@/lib/utils";
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const nextPath = url.searchParams.get("next") ?? "/onboarding";
+  const nextPath = safeNextPath(url.searchParams.get("next"), "/onboarding");
 
   // OAuth providers may return error params if the user denies consent
   // or something went wrong at the provider level.

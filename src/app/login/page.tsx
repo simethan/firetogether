@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { BrandMark } from "@/components/brand/marks";
 import { createClient } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/utils";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
+  const nextPath = safeNextPath(searchParams.get("next"), "/onboarding");
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -65,7 +67,7 @@ function AuthForm() {
     }
 
     // Sign-in succeeded — redirect to onboarding (or dashboard if already set up)
-    router.push("/onboarding");
+    router.push(nextPath);
   }
 
   async function handleGoogleSignIn() {
@@ -77,7 +79,7 @@ function AuthForm() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       });
 

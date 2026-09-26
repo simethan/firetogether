@@ -34,6 +34,9 @@ export type Expense = {
   split_type: "personal" | "shared" | "custom";
   custom_ratio: number | null;
   created_at: string;
+  /** Set when this row is the user's share of a split-group expense. */
+  group_expense_id?: string | null;
+  group_id?: string | null;
   // Joined
   categories?: Category;
   users?: User;
